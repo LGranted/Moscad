@@ -1,0 +1,67 @@
+name: Build Android APK
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK
+        run: |
+          sdkmanager "ndk;26.3.11579264"
+          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.3.11579264" >> $GITHUB_ENV
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm install --force
+
+      - name: Create machine-uid stub
+        run: |
+          mkdir -p _patches/machine-uid/src
+          echo '[package]' > _patches/machine-uid/Cargo.toml
+          echo 'name = "machine-uid"' >> _patches/machine-uid/Cargo.toml
+          echo 'version = "0.5.4"' >> _patches/machine-uid/Cargo.toml
+          echo 'edition = "2021"' >> _patches/machine-uid/Cargo.toml
+          echo 'pub fn get() -> Result<String, std::io::Error> { Ok("android".into()) }' > _patches/machine-uid/src/lib.rs
+          if ! grep -q "patch.crates-io" src-tauri/Cargo.toml; then
+            echo -e "\n[patch.crates-io]\nmachine-uid = { path = \"../_patches/machine-uid\" }" >> src-tauri/Cargo.toml
+          fi
+
+      - name: Build APK
+        env:
+          ANDROID_NDK_HOME: ${{ env.NDK_HOME }}
+        run: |
+          npx tauri android init
+          echo 'package com.lbjlaq.antigravity_tools' > src-tauri/gen/android/app/src/main/java/com/lbjlaq/antigravity_tools/MainActivity.kt
+          echo '' >> src-tauri/gen/android/app/src/main/java/com/lbjlaq/antigravity_tools/MainActivity.kt
+          echo 'class MainActivity : app.tauri.TauriActivity()' >> src-tauri/gen/android/app/src/main/java/com/lbjlaq/antigravity_tools/MainActivity.kt
+          cat src-tauri/gen/android/app/build.gradle || true
+          cat src-tauri/gen/android/app/src/main/java/com/lbjlaq/antigravity_tools/MainActivity.kt || true
+          npx tauri android build --apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Antigravity-APK
+          path: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
+          if-no-files-found: error
