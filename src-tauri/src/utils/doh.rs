@@ -1,13 +1,13 @@
 use hickory_resolver::{
     config::{ResolverConfig, ResolverOpts},
-    name_server::{GenericConnector, TokioRuntimeProvider},
+    name_server::TokioConnectionProvider,
     TokioResolver,
 };
 
 pub async fn resolve_hostname(hostname: &str) -> anyhow::Result<String> {
     let resolver = TokioResolver::builder_with_config(
         ResolverConfig::cloudflare(),
-        GenericConnector::new(TokioRuntimeProvider::new()),
+        TokioConnectionProvider::default(),
     )
     .with_options(ResolverOpts::default())
     .build();
