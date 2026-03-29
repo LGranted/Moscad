@@ -1,6 +1,6 @@
 #[cfg(target_os = "android")]
 use hickory_resolver::{
-    TokioAsyncResolver,
+    TokioResolver,
     config::{ResolverConfig, ResolverOpts},
 };
 
@@ -10,7 +10,7 @@ pub async fn resolve_with_doh(hostname: &str) -> Option<std::net::IpAddr> {
     opts.cache_size = 32;
 
     // Используем Cloudflare DoH
-    let resolver = TokioAsyncResolver::tokio(
+    let resolver = TokioResolver::tokio(
         ResolverConfig::cloudflare(),
         opts,
     );

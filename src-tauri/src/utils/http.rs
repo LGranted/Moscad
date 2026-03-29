@@ -5,7 +5,7 @@
 #[cfg(not(target_os = "android"))]
 use crate::modules::config::load_app_config;
 use once_cell::sync::Lazy;
-use reqwest::{Client, Proxy};
+use reqwest::Client;
 use std::time::Duration;
 
 // ---------------------------------------------------------------------------
@@ -30,7 +30,7 @@ pub static SHARED_STANDARD_CLIENT_LONG: Lazy<Client> = Lazy::new(|| create_base_
 // ---------------------------------------------------------------------------
 
 fn create_base_client(timeout_secs: u64) -> Client {
-    let mut builder = Client::builder()
+    let builder = Client::builder()
         .timeout(Duration::from_secs(timeout_secs))
         .connect_timeout(Duration::from_secs(20))
         .pool_max_idle_per_host(8)

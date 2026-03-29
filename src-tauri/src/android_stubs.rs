@@ -146,7 +146,6 @@ pub fn apply_android_stealth_fixes(payload_json: &mut serde_json::Value) {
 #[command] pub async fn check_proxy_health() -> CommandResult<Value> {
     use crate::utils::http::stealth::get_stealth_client;
     use hyper014::Request;
-    use hyper014::body::to_bytes;
     let client = get_stealth_client().map_err(|e| e.to_string())?;
     let req = Request::builder()
         .method("GET")
