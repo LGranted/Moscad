@@ -399,9 +399,7 @@ pub async fn submit_oauth_code(code: String, state: Option<String>) -> CommandRe
 // ── Import — реальные команды ─────────────────────────────────────────────────
 #[command]
 pub async fn import_custom_db(path: String) -> CommandResult<Value> {
-    let refresh_token = crate::modules::migration::extract_refresh_token_from_file(
-        &std::path::PathBuf::from(&path)
-    )?;
+    let refresh_token = extract_refresh_token_android(&std::path::PathBuf::from(&path))?;
     let token_resp = crate::modules::oauth::refresh_access_token(&refresh_token, None).await?;
     let user_info  = crate::modules::oauth::get_user_info(&token_resp.access_token, None).await?;
     let account    = db_android::add_account(&user_info.email, &refresh_token)?;
@@ -428,4 +426,32 @@ pub async fn sync_account_from_db(account_id: String) -> CommandResult<Value> {
     let user_info  = crate::modules::oauth::get_user_info(&token_resp.access_token, None).await?;
     let updated    = db_android::add_account(&user_info.email, &account.refresh_token)?;
     Ok(serde_json::to_value(updated).map_err(|e| e.to_string())?)
+}
+
+// ── Import custom db (Android версия без migration модуля) ────────────────────
+pub fn extract_refresh_token_android(path: &std::path::PathBuf) -> Result<String, String> {
+    use base64::{Engine as _, engine::general_purpose};
+    let conn = rusqlite::Connection::open(path)
+        .map_err(|e| format!("Failed to open database: {}", e))?;
+    let data: String = conn.query_row(
+        "SELECT value FROM ItemTable WHERE key = ?",
+        ["antigravityUnifiedStateSync.oauthToken"],
+        |row| row.get(0),
+    ).map_err(|_| "Login state not found".to_string())?;
+    let blob = general_purpose::STANDARD.decode(&data)
+        .map_err(|e| format!("Base64 decode failed: {}", e))?;
+    // Field 1 -> Field 2 -> Field 1 -> Base64 -> Field 3
+    let f1 = crate::utils::protobuf::find_field(&blob, 1)
+        .map_err(|e| e)?.ok_or("Field 1 not found")?;
+    let f2 = crate::utils::protobuf::find_field(&f1, 2)
+        .map_err(|e| e)?.ok_or("Field 2 not found")?;
+    let f3_bytes = crate::utils::protobuf::find_field(&f2, 1)
+        .map_err(|e| e)?.ok_or("Field 1 inner not found")?;
+    let b64 = String::from_utf8(f3_bytes)
+        .map_err(|_| "Not UTF-8")?;
+    let inner = general_purpose::STANDARD.decode(&b64)
+        .map_err(|e| format!("Inner decode failed: {}", e))?;
+    let refresh = crate::utils::protobuf::find_field(&inner, 3)
+        .map_err(|e| e)?.ok_or("Refresh token not found")?;
+    String::from_utf8(refresh).map_err(|_| "Refresh token not UTF-8".to_string())
 }

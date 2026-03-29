@@ -149,6 +149,8 @@ pub struct IpStats {
 
 pub fn list_accounts() -> Result<Vec<Account>, String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
+    let conn = &*conn;
     let mut stmt = conn.prepare(
         "SELECT id, email, refresh_token, label, is_current,
                 disabled, disabled_reason, created_at, last_used
@@ -173,6 +175,7 @@ pub fn list_accounts() -> Result<Vec<Account>, String> {
 
 pub fn add_account(email: &str, refresh_token: &str) -> Result<Account, String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     let now = chrono::Utc::now().timestamp();
     let id  = uuid::Uuid::new_v4().to_string();
 
@@ -196,6 +199,7 @@ pub fn add_account(email: &str, refresh_token: &str) -> Result<Account, String> 
 
 pub fn delete_account(account_id: &str) -> Result<(), String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     conn.execute("DELETE FROM accounts WHERE id = ?1", params![account_id])
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -203,6 +207,7 @@ pub fn delete_account(account_id: &str) -> Result<(), String> {
 
 pub fn switch_account(account_id: &str) -> Result<(), String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     conn.execute("UPDATE accounts SET is_current = 0", [])
         .map_err(|e| e.to_string())?;
     conn.execute(
@@ -218,6 +223,7 @@ pub fn get_current_account() -> Result<Option<Account>, String> {
 
 pub fn update_label(account_id: &str, label: &str) -> Result<(), String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     conn.execute(
         "UPDATE accounts SET label = ?1 WHERE id = ?2",
         params![label, account_id],
@@ -229,6 +235,7 @@ pub fn update_label(account_id: &str, label: &str) -> Result<(), String> {
 
 pub fn add_to_blacklist(ip: &str, reason: Option<&str>) -> Result<IpBlacklistEntry, String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     let id  = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     conn.execute(
@@ -246,6 +253,7 @@ pub fn add_to_blacklist(ip: &str, reason: Option<&str>) -> Result<IpBlacklistEnt
 
 pub fn remove_from_blacklist(id: &str) -> Result<(), String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     conn.execute("DELETE FROM ip_blacklist WHERE id = ?1", [id])
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -253,6 +261,8 @@ pub fn remove_from_blacklist(id: &str) -> Result<(), String> {
 
 pub fn get_blacklist() -> Result<Vec<IpBlacklistEntry>, String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
+    let conn = \&*conn;
     let mut stmt = conn.prepare(
         "SELECT id, ip_pattern, reason, created_at, expires_at, created_by, hit_count
          FROM ip_blacklist ORDER BY created_at DESC"
@@ -270,6 +280,7 @@ pub fn get_blacklist() -> Result<Vec<IpBlacklistEntry>, String> {
 
 pub fn is_ip_in_blacklist(ip: &str) -> Result<bool, String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     let now = chrono::Utc::now().timestamp();
     // Чистим просроченные
     let _ = conn.execute(
@@ -300,6 +311,7 @@ pub fn is_ip_in_blacklist(ip: &str) -> Result<bool, String> {
 
 pub fn clear_blacklist() -> Result<(), String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     conn.execute("DELETE FROM ip_blacklist", []).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -308,6 +320,7 @@ pub fn clear_blacklist() -> Result<(), String> {
 
 pub fn add_to_whitelist(ip: &str, description: Option<&str>) -> Result<IpWhitelistEntry, String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     let id  = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     conn.execute(
@@ -322,6 +335,7 @@ pub fn add_to_whitelist(ip: &str, description: Option<&str>) -> Result<IpWhiteli
 
 pub fn remove_from_whitelist(id: &str) -> Result<(), String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     conn.execute("DELETE FROM ip_whitelist WHERE id = ?1", [id])
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -329,6 +343,8 @@ pub fn remove_from_whitelist(id: &str) -> Result<(), String> {
 
 pub fn get_whitelist() -> Result<Vec<IpWhitelistEntry>, String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
+    let conn = \&*conn;
     let mut stmt = conn.prepare(
         "SELECT id, ip_pattern, description, created_at FROM ip_whitelist ORDER BY created_at DESC"
     ).map_err(|e| e.to_string())?;
@@ -343,6 +359,7 @@ pub fn get_whitelist() -> Result<Vec<IpWhitelistEntry>, String> {
 
 pub fn is_ip_in_whitelist(ip: &str) -> Result<bool, String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     let count: i64 = conn.query_row(
         "SELECT COUNT(*) FROM ip_whitelist WHERE ip_pattern = ?1", [ip], |r| r.get(0)
     ).map_err(|e| e.to_string())?;
@@ -358,6 +375,7 @@ pub fn is_ip_in_whitelist(ip: &str) -> Result<bool, String> {
 
 pub fn clear_whitelist() -> Result<(), String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     conn.execute("DELETE FROM ip_whitelist", []).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -366,6 +384,7 @@ pub fn clear_whitelist() -> Result<(), String> {
 
 pub fn get_ip_stats() -> Result<IpStats, String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     let today_start = chrono::Utc::now()
         .date_naive().and_hms_opt(0, 0, 0).unwrap()
         .and_utc().timestamp();
@@ -394,6 +413,7 @@ pub fn get_ip_stats() -> Result<IpStats, String> {
 
 pub fn clear_ip_access_logs() -> Result<(), String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
+    let conn = &*conn;
     conn.execute("DELETE FROM ip_access_logs", []).map_err(|e| e.to_string())?;
     Ok(())
 }
