@@ -354,3 +354,78 @@ pub async fn check_proxy_health() -> CommandResult<Value> {
 #[command] pub async fn delete_device_version(_account_id: String, _version_id: String) -> CommandResult<()> { Ok(()) }
 #[command] pub async fn open_device_folder() -> CommandResult<()> { Ok(()) }
 #[command] pub async fn restore_original_device() -> CommandResult<()> { Ok(()) }
+
+// ── OAuth — реальные команды ──────────────────────────────────────────────────
+#[command]
+pub async fn start_oauth_login(app_handle: tauri::AppHandle) -> CommandResult<Value> {
+    let token = crate::modules::oauth_server::start_oauth_flow(Some(app_handle))
+        .await?;
+    let user_info = crate::modules::oauth::get_user_info(&token.access_token, None).await?;
+    let refresh = token.refresh_token.unwrap_or_default();
+    let account = db_android::add_account(&user_info.email, &refresh)?;
+    info!("[OAuth] Login successful: {}", account.email);
+    Ok(serde_json::to_value(account).map_err(|e| e.to_string())?)
+}
+
+#[command]
+pub async fn prepare_oauth_url(app_handle: tauri::AppHandle) -> CommandResult<Value> {
+    let url = crate::modules::oauth_server::prepare_oauth_url(Some(app_handle)).await?;
+    Ok(json!({ "url": url }))
+}
+
+#[command]
+pub async fn complete_oauth_login(app_handle: tauri::AppHandle) -> CommandResult<Value> {
+    let token = crate::modules::oauth_server::complete_oauth_flow(Some(app_handle)).await?;
+    let user_info = crate::modules::oauth::get_user_info(&token.access_token, None).await?;
+    let refresh = token.refresh_token.unwrap_or_default();
+    let account = db_android::add_account(&user_info.email, &refresh)?;
+    info!("[OAuth] Complete login: {}", account.email);
+    Ok(serde_json::to_value(account).map_err(|e| e.to_string())?)
+}
+
+#[command]
+pub async fn cancel_oauth_login() -> CommandResult<()> {
+    crate::modules::oauth_server::cancel_oauth_flow();
+    info!("[OAuth] Flow cancelled");
+    Ok(())
+}
+
+#[command]
+pub async fn submit_oauth_code(code: String, state: Option<String>) -> CommandResult<Value> {
+    crate::modules::oauth_server::submit_oauth_code(code, state).await?;
+    Ok(json!({ "status": "ok" }))
+}
+
+// ── Import — реальные команды ─────────────────────────────────────────────────
+#[command]
+pub async fn import_custom_db(path: String) -> CommandResult<Value> {
+    let refresh_token = crate::modules::migration::extract_refresh_token_from_file(
+        &std::path::PathBuf::from(&path)
+    )?;
+    let token_resp = crate::modules::oauth::refresh_access_token(&refresh_token, None).await?;
+    let user_info  = crate::modules::oauth::get_user_info(&token_resp.access_token, None).await?;
+    let account    = db_android::add_account(&user_info.email, &refresh_token)?;
+    info!("[Import] Imported account: {}", account.email);
+    Ok(serde_json::to_value(account).map_err(|e| e.to_string())?)
+}
+
+#[command]
+pub async fn import_from_db() -> CommandResult<Value> {
+    Err("На Android укажите путь к файлу базы вручную через import_custom_db".into())
+}
+
+#[command]
+pub async fn import_v1_accounts() -> CommandResult<Value> {
+    Err("Импорт V1 недоступен на Android".into())
+}
+
+#[command]
+pub async fn sync_account_from_db(account_id: String) -> CommandResult<Value> {
+    let accounts = db_android::list_accounts()?;
+    let account  = accounts.iter().find(|a| a.id == account_id)
+        .ok_or_else(|| format!("Аккаунт не найден: {}", account_id))?;
+    let token_resp = crate::modules::oauth::refresh_access_token(&account.refresh_token, None).await?;
+    let user_info  = crate::modules::oauth::get_user_info(&token_resp.access_token, None).await?;
+    let updated    = db_android::add_account(&user_info.email, &account.refresh_token)?;
+    Ok(serde_json::to_value(updated).map_err(|e| e.to_string())?)
+}

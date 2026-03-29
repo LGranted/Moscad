@@ -96,6 +96,17 @@ pub mod account {
     }
 }
 
+#[cfg(target_os = "android")]
+
+#[cfg(target_os = "android")]
+
+#[cfg(target_os = "android")]
+
+#[cfg(target_os = "android")]
+
+#[cfg(target_os = "android")]
+pub mod db_android;
+
 // ── account_service ───────────────────────────────────────────────────────────
 #[cfg(not(target_os = "android"))]
 pub mod account_service;
