@@ -1,24 +1,24 @@
-#[cfg(target_os = "android")]
 use hickory_resolver::{
-    TokioResolver,
     config::{ResolverConfig, ResolverOpts},
+    TokioResolver,
+    name_server::TokioConnectionProvider,
 };
 
-#[cfg(target_os = "android")]
-pub async fn resolve_with_doh(hostname: &str) -> Option<std::net::IpAddr> {
-    let mut opts = ResolverOpts::default();
-    opts.cache_size = 32;
-
-    // Используем Cloudflare DoH
-    let resolver = TokioResolver::tokio(
+pub async fn resolve_hostname(hostname: &str) -> anyhow::Result<String> {
+    let resolver = TokioResolver::builder_with_config(
         ResolverConfig::cloudflare(),
-        opts,
-    );
+        ResolverOpts::default(),
+    ).build();
 
-    resolver
+    let response = resolver
         .lookup_ip(hostname)
         .await
-        .ok()?
+        .map_err(|e| anyhow::anyhow!("DoH lookup failed: {}", e))?;
+
+    let addr = response
         .iter()
         .next()
+        .ok_or_else(|| anyhow::anyhow!("No IP found for {}", hostname))?;
+
+    Ok(addr.to_string())
 }
