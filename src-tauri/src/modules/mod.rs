@@ -90,17 +90,9 @@ pub mod account;
 #[cfg(target_os = "android")]
 pub mod account {
     use std::path::PathBuf;
-    use crate::models::account::Account;
-    use crate::models::token::TokenData;
 
-    pub fn get_data_dir() -> Result<PathBuf, String> { Ok(PathBuf::from(".")) }
-
-    pub fn upsert_account(
-        email: String,
-        _name: Option<String>,
-        token: TokenData,
-    ) -> Result<Account, String> {
-        Ok(Account::new("android_session".into(), email, token))
+    pub fn get_data_dir() -> Result<PathBuf, String> {
+        Ok(PathBuf::from("/data/data/com.lbjlaq.antigravity_tools/files"))
     }
 }
 

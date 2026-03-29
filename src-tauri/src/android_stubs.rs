@@ -143,7 +143,21 @@ pub fn apply_android_stealth_fixes(payload_json: &mut serde_json::Value) {
 #[command] pub async fn clear_proxy_session_bindings() -> CommandResult<()> { Ok(()) }
 #[command] pub async fn clear_proxy_rate_limit(_account_id: String) -> CommandResult<()> { Ok(()) }
 #[command] pub async fn clear_all_proxy_rate_limits() -> CommandResult<()> { Ok(()) }
-#[command] pub async fn check_proxy_health() -> CommandResult<Value> { Ok(json!({"status": "ok"})) }
+#[command] pub async fn check_proxy_health() -> CommandResult<Value> {
+    use crate::utils::http::stealth::get_stealth_client;
+    use hyper014::Request;
+    use hyper014::body::to_bytes;
+    let client = get_stealth_client().map_err(|e| e.to_string())?;
+    let req = Request::builder()
+        .method("GET")
+        .uri("https://www.google.com/generate_204")
+        .body(hyper014::Body::empty())
+        .map_err(|e| e.to_string())?;
+    match client.request(req).await {
+        Ok(resp) => Ok(json!({"status": "ok", "code": resp.status().as_u16()})),
+        Err(e) => Ok(json!({"status": "error", "message": e.to_string()})),
+    }
+}
 #[command] pub async fn get_preferred_account() -> CommandResult<Value> { Ok(json!(null)) }
 #[command] pub async fn set_preferred_account(_account_id: String) -> CommandResult<()> { Ok(()) }
 #[command] pub async fn fetch_zai_models() -> CommandResult<Value> { Ok(json!([])) }
