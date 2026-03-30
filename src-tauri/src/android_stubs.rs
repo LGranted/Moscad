@@ -133,6 +133,8 @@ pub async fn delete_accounts(account_ids: Vec<String>) -> CommandResult<()> {
 #[command]
 pub async fn switch_account(account_id: String) -> CommandResult<()> {
     db_android::switch_account(&account_id)?;
+    // Устанавливаем активный аккаунт в token store
+    crate::utils::token_store::set_current(&account_id);
     info!("[DB] Switched to account: {}", account_id);
     Ok(())
 }

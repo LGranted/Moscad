@@ -106,18 +106,51 @@ pub mod stealth {
 
     pub type StealthClient = Client<HttpsConnector<hyper014::client::HttpConnector>>;
 
+    /// Получить stealth клиент для конкретного аккаунта.
+    /// account_seed — любая строка (email или id), влияет на TLS профиль.
+    /// Алиас для обратной совместимости
     pub fn get_stealth_client() -> anyhow::Result<StealthClient> {
+        get_stealth_client_for(None)
+    }
+
+    /// Алиас с явным указанием аккаунта
+    pub fn get_stealth_client_for_account(account_seed: Option<&str>) -> anyhow::Result<StealthClient> {
+        get_stealth_client_for(account_seed)
+    }
+
+    pub fn get_stealth_client_for(account_seed: Option<&str>) -> anyhow::Result<StealthClient> {
         let fp = FingerprintConfig::current();
         let mut builder = SslConnector::builder(SslMethod::tls_client())?;
 
         builder.set_grease_enabled(true);
         builder.enable_ocsp_stapling();
-        // TLS Session Ticket control — отключаем resumption для избежания паттернов
+
+        // TLS Session Ticket — отключаем чтобы разные аккаунты
+        // не связывались через закэшированную TLS-сессию
         builder.set_session_cache_mode(boring::ssl::SslSessionCacheMode::OFF);
-        builder.set_cipher_list(&fp.cipher_list)?;
+
+        // TLS ротация — выбираем cipher profile по хэшу аккаунта
+        // Разные аккаунты = разные TLS отпечатки = нет связи между ними
+        let profile_idx = account_seed
+            .map(|s| s.bytes().fold(0u64, |acc, b| acc.wrapping_add(b as u64)) % 3)
+            .unwrap_or(0);
+
+        let cipher_list = match profile_idx {
+            0 => &fp.cipher_list,
+            1 => "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA",
+            _ => "TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256",
+        };
+
+        let curves = match profile_idx {
+            0 => "X25519:P-256:P-384",
+            1 => "P-256:X25519:P-384",
+            _ => "X25519:P-384:P-256",
+        };
+
+        builder.set_cipher_list(cipher_list)?;
         builder.set_alpn_protos(b"\x02h2\x08http/1.1")?;
         builder.enable_signed_cert_timestamps();
-        builder.set_curves_list("X25519:P-256:P-384")?;
+        builder.set_curves_list(curves)?;
 
         let mut http = hyper014::client::HttpConnector::new();
         http.enforce_http(false);
@@ -128,6 +161,12 @@ pub mod stealth {
             .http2_initial_stream_window_size(6291456u32)
             .http2_initial_connection_window_size(15728640u32)
             .http2_max_frame_size(16384u32)
+            // HPACK dynamic table — Chrome 131 использует 64 KiB
+            .http2_header_table_size(65536u32)
+            // Chrome отправляет ~1000 concurrent streams в SETTINGS
+            .http2_max_concurrent_streams(Some(1000u32))
+            // Max header list size — Chrome 131
+            .http2_max_header_list_size(Some(16384u32))
             .build(connector))
     }
 }

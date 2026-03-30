@@ -41,12 +41,22 @@ pub async fn handle_android_stealth_request(
         .method(method.as_str())
         .uri(&url);
 
+    // Memory Token Injection — подставляем свежий токен если есть
+    let injected_token = crate::utils::token_store::get_fresh_token().await;
+
     // Пробрасываем заголовки от фронтенда
     for (k, v) in &headers {
         let key_lower = k.to_lowercase();
         // Пропускаем заголовки которые перезапишем ниже
         if key_lower == "user-agent" || key_lower == "sec-ch-ua" || key_lower == "sec-ch-ua-mobile" || key_lower == "sec-ch-ua-platform" {
             continue;
+        }
+        // Заменяем Authorization свежим токеном из store
+        if key_lower == "authorization" {
+            if let Some(ref token) = injected_token {
+                builder = builder.header("authorization", format!("Bearer {}", token));
+                continue;
+            }
         }
         builder = builder.header(k, v);
     }
@@ -89,10 +99,19 @@ pub async fn handle_android_stealth_request_stream(
         .method(method.as_str())
         .uri(&url);
 
+    // Memory Token Injection для стриминга
+    let injected_token = crate::utils::token_store::get_fresh_token().await;
+
     for (k, v) in &headers {
         let key_lower = k.to_lowercase();
         if key_lower == "user-agent" || key_lower == "sec-ch-ua" || key_lower == "sec-ch-ua-mobile" || key_lower == "sec-ch-ua-platform" {
             continue;
+        }
+        if key_lower == "authorization" {
+            if let Some(ref token) = injected_token {
+                builder = builder.header("authorization", format!("Bearer {}", token));
+                continue;
+            }
         }
         builder = builder.header(k, v);
     }

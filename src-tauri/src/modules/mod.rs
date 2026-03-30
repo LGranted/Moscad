@@ -43,8 +43,7 @@ pub mod config {
         let path = dir.join("gui_config.json");
         let content = serde_json::to_string_pretty(config)
             .map_err(|e| format!("failed_to_serialize: {}", e))?;
-        fs::write(&path, content)
-            .map_err(|e| format!("failed_to_write_config: {}", e))
+        crate::utils::atomic::write_atomic(&path, &content)
     }
 }
 
