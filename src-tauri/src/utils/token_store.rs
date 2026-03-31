@@ -133,3 +133,10 @@ pub async fn get_fresh_token() -> Option<String> {
         }
     }
 }
+
+/// Получить android_id текущего активного аккаунта
+pub fn get_current_android_id() -> Option<String> {
+    let account_id = CURRENT_ACCOUNT_ID.lock().ok()?.clone()?;
+    let store = TOKEN_STORE.lock().ok()?;
+    store.get(&account_id).map(|e| e.android_id.clone())
+}

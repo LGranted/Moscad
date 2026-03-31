@@ -7,12 +7,15 @@ use std::collections::HashMap;
 use crate::utils::fingerprint::FingerprintConfig;
 
 fn get_chrome_ua() -> String {
-    FingerprintConfig::current().user_agent.clone()
+    crate::utils::fingerprint::FingerprintConfig::current().user_agent.clone()
 }
 
-fn get_sec_ch_ua() -> String {
-    let v = FingerprintConfig::current().chrome_version;
-    format!("\"Google Chrome\";v=\"{v}\", \"Chromium\";v=\"{v}\", \"Not_A Brand\";v=\"24\"")
+fn get_antigravity_version() -> String {
+    crate::utils::fingerprint::FingerprintConfig::current().antigravity_version.clone()
+}
+
+fn get_goog_api_client() -> String {
+    "gl-node/22.18.0".to_string()
 }
 
 #[derive(Clone)]
@@ -62,10 +65,15 @@ pub async fn handle_android_stealth_request(
     }
 
     // Принудительно синхронизируем UA с TLS fingerprint
+    // Десктопный Antigravity fingerprint
     builder = builder.header("user-agent", get_chrome_ua());
-    builder = builder.header("sec-ch-ua", get_sec_ch_ua());
-    builder = builder.header("sec-ch-ua-mobile", "?1");
-    builder = builder.header("sec-ch-ua-platform", "\"Android\"");
+    builder = builder.header("x-goog-api-client", get_goog_api_client());
+    builder = builder.header("x-client-name", "antigravity");
+    builder = builder.header("x-client-version", get_antigravity_version());
+    // Уникальный android_id для каждого аккаунта — изолируем аккаунты
+    if let Some(android_id) = crate::utils::token_store::get_current_android_id() {
+        builder = builder.header("x-client-device-id", android_id);
+    }
 
     let request = builder
         .body(body)
@@ -116,10 +124,15 @@ pub async fn handle_android_stealth_request_stream(
         builder = builder.header(k, v);
     }
 
+    // Десктопный Antigravity fingerprint
     builder = builder.header("user-agent", get_chrome_ua());
-    builder = builder.header("sec-ch-ua", get_sec_ch_ua());
-    builder = builder.header("sec-ch-ua-mobile", "?1");
-    builder = builder.header("sec-ch-ua-platform", "\"Android\"");
+    builder = builder.header("x-goog-api-client", get_goog_api_client());
+    builder = builder.header("x-client-name", "antigravity");
+    builder = builder.header("x-client-version", get_antigravity_version());
+    // Уникальный android_id для каждого аккаунта — изолируем аккаунты
+    if let Some(android_id) = crate::utils::token_store::get_current_android_id() {
+        builder = builder.header("x-client-device-id", android_id);
+    }
 
     let request = builder
         .body(body_data)

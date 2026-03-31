@@ -29,6 +29,7 @@ fn init_schema(conn: &Connection) -> Result<()> {
             email           TEXT NOT NULL UNIQUE,
             refresh_token   TEXT NOT NULL,
             label           TEXT,
+            android_id      TEXT NOT NULL DEFAULT '',
             is_current      INTEGER NOT NULL DEFAULT 0,
             disabled        INTEGER NOT NULL DEFAULT 0,
             disabled_reason TEXT,
@@ -109,11 +110,23 @@ pub struct Account {
     pub email:           String,
     pub refresh_token:   String,
     pub label:           Option<String>,
+    pub android_id:      String,
     pub is_current:      bool,
     pub disabled:        bool,
     pub disabled_reason: Option<String>,
     pub created_at:      i64,
     pub last_used:       i64,
+}
+
+/// Генерируем уникальный ANDROID_ID для каждого аккаунта
+fn generate_android_id() -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    let seed = uuid::Uuid::new_v4().to_string();
+    seed.hash(&mut hasher);
+    chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0).hash(&mut hasher);
+    format!("{:016x}", hasher.finish())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -152,7 +165,7 @@ pub fn list_accounts() -> Result<Vec<Account>, String> {
     let conn = &*conn;
     let conn = &*conn;
     let mut stmt = conn.prepare(
-        "SELECT id, email, refresh_token, label, is_current,
+        "SELECT id, email, refresh_token, label, android_id, is_current,
                 disabled, disabled_reason, created_at, last_used
          FROM accounts ORDER BY created_at ASC"
     ).map_err(|e| e.to_string())?;
@@ -162,11 +175,12 @@ pub fn list_accounts() -> Result<Vec<Account>, String> {
         email:           row.get(1)?,
         refresh_token:   row.get(2)?,
         label:           row.get(3)?,
-        is_current:      row.get::<_, i64>(4)? == 1,
-        disabled:        row.get::<_, i64>(5)? == 1,
-        disabled_reason: row.get(6)?,
-        created_at:      row.get(7)?,
-        last_used:       row.get(8)?,
+        android_id:      row.get::<_, String>(4).unwrap_or_else(|_| generate_android_id()),
+        is_current:      row.get::<_, i64>(5)? == 1,
+        disabled:        row.get::<_, i64>(6)? == 1,
+        disabled_reason: row.get(7)?,
+        created_at:      row.get(8)?,
+        last_used:       row.get(9)?,
     }))
     .map_err(|e| e.to_string())?
     .collect::<Result<Vec<_>, _>>()
@@ -179,19 +193,22 @@ pub fn add_account(email: &str, refresh_token: &str) -> Result<Account, String> 
     let now = chrono::Utc::now().timestamp();
     let id  = uuid::Uuid::new_v4().to_string();
 
+    let android_id = generate_android_id();
+
     conn.execute(
-        "INSERT INTO accounts (id, email, refresh_token, created_at, last_used)
-         VALUES (?1, ?2, ?3, ?4, ?5)
+        "INSERT INTO accounts (id, email, refresh_token, android_id, created_at, last_used)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
          ON CONFLICT(email) DO UPDATE SET
              refresh_token = excluded.refresh_token,
              last_used     = excluded.last_used",
-        params![id, email, refresh_token, now, now],
+        params![id, email, refresh_token, android_id, now, now],
     ).map_err(|e| e.to_string())?;
 
     Ok(Account {
         id, email: email.to_string(),
         refresh_token: refresh_token.to_string(),
-        label: None, is_current: false,
+        label: None, android_id,
+        is_current: false,
         disabled: false, disabled_reason: None,
         created_at: now, last_used: now,
     })

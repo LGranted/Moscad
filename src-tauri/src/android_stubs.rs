@@ -83,13 +83,24 @@ pub fn apply_android_stealth_fixes(payload_json: &mut serde_json::Value) {
             }
         }
     }
-    let model        = get_system_prop("ro.product.model");
-    let manufacturer = get_system_prop("ro.product.manufacturer");
+    let ag_version = crate::utils::fingerprint::FingerprintConfig::current()
+        .antigravity_version.clone();
     if let Some(meta) = payload_json.get_mut("metadata") {
         if let Some(obj) = meta.as_object_mut() {
-            obj.insert("device_model".to_string(), json!(model));
-            obj.insert("device_brand".to_string(), json!(manufacturer));
-            info!("[Android] Metadata injected: {} {}", manufacturer, model);
+            obj.insert("ide_type".to_string(), json!(9));
+            obj.insert("ide_version".to_string(), json!(ag_version.clone()));
+            obj.insert("ide_name".to_string(), json!("antigravity"));
+            obj.insert("platform".to_string(), json!("linux/aarch64"));
+            info!("[Android] Antigravity metadata injected v{}", ag_version);
+        }
+    } else {
+        if let Some(obj) = payload_json.as_object_mut() {
+            obj.insert("metadata".to_string(), json!({
+                "ide_type": 9,
+                "ide_version": ag_version,
+                "ide_name": "antigravity",
+                "platform": "linux/aarch64"
+            }));
         }
     }
 }
