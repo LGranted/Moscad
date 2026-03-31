@@ -51,7 +51,7 @@ pub async fn handle_android_stealth_request(
     for (k, v) in &headers {
         let key_lower = k.to_lowercase();
         // Пропускаем заголовки которые перезапишем ниже
-        if key_lower == "user-agent" || key_lower == "sec-ch-ua" || key_lower == "sec-ch-ua-mobile" || key_lower == "sec-ch-ua-platform" {
+        if key_lower == "user-agent" || key_lower == "x-goog-api-client" || key_lower == "x-client-name" || key_lower == "x-client-version" || key_lower == "x-machine-id" {
             continue;
         }
         // Заменяем Authorization свежим токеном из store
@@ -70,9 +70,9 @@ pub async fn handle_android_stealth_request(
     builder = builder.header("x-goog-api-client", get_goog_api_client());
     builder = builder.header("x-client-name", "antigravity");
     builder = builder.header("x-client-version", get_antigravity_version());
-    // Уникальный android_id для каждого аккаунта — изолируем аккаунты
-    if let Some(android_id) = crate::utils::token_store::get_current_android_id() {
-        builder = builder.header("x-client-device-id", android_id);
+    // Уникальный machine_id для каждого аккаунта — изолируем аккаунты
+    if let Some(machine_id) = crate::utils::token_store::get_current_machine_id() {
+        builder = builder.header("x-machine-id", machine_id);
     }
 
     let request = builder
@@ -112,7 +112,7 @@ pub async fn handle_android_stealth_request_stream(
 
     for (k, v) in &headers {
         let key_lower = k.to_lowercase();
-        if key_lower == "user-agent" || key_lower == "sec-ch-ua" || key_lower == "sec-ch-ua-mobile" || key_lower == "sec-ch-ua-platform" {
+        if key_lower == "user-agent" || key_lower == "x-goog-api-client" || key_lower == "x-client-name" || key_lower == "x-client-version" || key_lower == "x-machine-id" {
             continue;
         }
         if key_lower == "authorization" {
@@ -129,9 +129,9 @@ pub async fn handle_android_stealth_request_stream(
     builder = builder.header("x-goog-api-client", get_goog_api_client());
     builder = builder.header("x-client-name", "antigravity");
     builder = builder.header("x-client-version", get_antigravity_version());
-    // Уникальный android_id для каждого аккаунта — изолируем аккаунты
-    if let Some(android_id) = crate::utils::token_store::get_current_android_id() {
-        builder = builder.header("x-client-device-id", android_id);
+    // Уникальный machine_id для каждого аккаунта — изолируем аккаунты
+    if let Some(machine_id) = crate::utils::token_store::get_current_machine_id() {
+        builder = builder.header("x-machine-id", machine_id);
     }
 
     let request = builder

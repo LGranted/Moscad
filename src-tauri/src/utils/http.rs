@@ -36,7 +36,7 @@ fn create_base_client(timeout_secs: u64) -> Client {
         .pool_max_idle_per_host(8)
         .pool_idle_timeout(Duration::from_secs(90))
         .tcp_keepalive(Duration::from_secs(60))
-        .user_agent(if cfg!(target_os = "android") { "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36" } else { "Mozilla/5.0" });
+        .user_agent(crate::utils::fingerprint::FingerprintConfig::current().user_agent.clone());
 
     #[cfg(not(target_os = "android"))]
 if let Ok(config) = load_app_config() {

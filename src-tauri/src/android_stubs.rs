@@ -23,14 +23,16 @@ fn get_system_prop(prop: &str) -> String {
 
 // ── Stealth client ────────────────────────────────────────────────────────────
 pub fn build_stealth_client() -> reqwest::Client {
-    info!("Building explicit BoringSSL client with Chrome 131 mimicry");
+    info!("Building Antigravity Linux stealth client");
+    let fp = crate::utils::fingerprint::FingerprintConfig::current();
+    let ver = fp.antigravity_version.clone();
     reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36")
+        .user_agent(fp.user_agent.clone())
         .default_headers({
             let mut headers = reqwest::header::HeaderMap::new();
-            headers.insert("sec-ch-ua", "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"".parse().unwrap());
-            headers.insert("sec-ch-ua-mobile", "?1".parse().unwrap());
-            headers.insert("sec-ch-ua-platform", "\"Android\"".parse().unwrap());
+            headers.insert("x-goog-api-client", "gl-node/22.18.0".parse().unwrap());
+            headers.insert("x-client-name", "antigravity".parse().unwrap());
+            headers.insert("x-client-version", ver.parse().unwrap());
             headers
         })
         .build()
@@ -40,17 +42,16 @@ pub fn build_stealth_client() -> reqwest::Client {
 #[command]
 pub fn get_device_profiles() -> CommandResult<Value> {
     let _client = build_stealth_client();
-    let model        = get_system_prop("ro.product.model");
-    let manufacturer = get_system_prop("ro.product.manufacturer");
-    info!("Android Stealth Layer Active. BoringSSL initialized.");
+    let ag_version = crate::utils::fingerprint::FingerprintConfig::current()
+        .antigravity_version.clone();
+    info!("Moscad Stealth Layer Active. BoringSSL initialized.");
     Ok(json!({
         "status": "active",
-        "platform": "android",
+        "platform": "linux/aarch64",
         "details": {
-            "model": model,
-            "manufacturer": manufacturer,
-            "tls_mimicry": "chrome-131-android-explicit",
-            "proxy_core": "virtualized-android-layer"
+            "ide_version": ag_version,
+            "tls_mimicry": "chrome-boringssl",
+            "proxy_core": "moscad-linux-layer"
         }
     }))
 }
