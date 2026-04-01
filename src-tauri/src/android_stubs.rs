@@ -249,16 +249,18 @@ pub async fn clear_ip_access_logs() -> CommandResult<()> {
 // ── Proxy health ──────────────────────────────────────────────────────────────
 #[command]
 pub async fn check_proxy_health() -> CommandResult<Value> {
-    use crate::utils::http::stealth::get_stealth_client;
-    use hyper014::Request;
-    let client = get_stealth_client().map_err(|e| e.to_string())?;
-    let req = Request::builder()
-        .method("GET")
-        .uri("https://www.google.com/generate_204")
-        .body(hyper014::Body::empty())
-        .map_err(|e| e.to_string())?;
-    match client.request(req).await {
-        Ok(resp) => Ok(json!({"status": "ok", "code": resp.status().as_u16()})),
+    let client = reqwest::Client::new();
+    match client.get("https://www.google.com/generate_204").send().await {
+        Ok(resp) => Ok(json!({
+            "status": "ok",
+            "code": resp.status().as_u16()
+        })),
+        Err(e) => Ok(json!({
+            "status": "error",
+            "message": e.to_string()
+        }))
+    }
+})),
         Err(e)   => Ok(json!({"status": "error", "message": e.to_string()})),
     }
 }
@@ -443,7 +445,8 @@ pub async fn sync_account_from_db(account_id: String) -> CommandResult<Value> {
 
 // ── Import custom db (Android версия без migration модуля) ────────────────────
 pub fn extract_refresh_token_android(path: &std::path::PathBuf) -> Result<String, String> {
-    use base64::{Engine as _, engine::general_purpose};
+    Err("Import from desktop DB is not supported on Android (protobuf not available)".into())
+};
     let conn = rusqlite::Connection::open(path)
         .map_err(|e| format!("Failed to open database: {}", e))?;
     let data: String = conn.query_row(
