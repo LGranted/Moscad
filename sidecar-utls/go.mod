@@ -1,6 +1,6 @@
 module moscad-sidecar
 
-go 1.25.0
+go 1.25.8
 
 require (
 	github.com/refraction-networking/utls v1.8.3-0.20260301010127-aa6edf4b11af
