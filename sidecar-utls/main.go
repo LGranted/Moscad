@@ -8,21 +8,21 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"crypto/tls"
 	"os"
 	"strings"
 	"sync"
 	"time"
+	"crypto/tls"
 
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/net/http2"
 )
 
 const (
-	h2PrefaceStr      = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
-	h2PrefaceLen      = 24
-	h2FrameHeaderLen  = 9
-	chromeWindowInc   = uint32(15663105) 
+	h2PrefaceStr     = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+	h2PrefaceLen     = 24
+	h2FrameHeaderLen = 9
+	chromeWindowInc  = uint32(15663105)
 )
 
 type h2Setting struct {
@@ -49,7 +49,7 @@ func main() {
 	os.Chmod(sockPath, 0777)
 
 	tr := &http2.Transport{
-		DialTLS: func(network, addr string, cfg *http2.Config) (net.Conn, error) {
+		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
 			return dialChrome(addr)
 		},
 	}
