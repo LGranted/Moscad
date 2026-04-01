@@ -1,11 +1,14 @@
 name: moscad-android
+
 on:
   workflow_dispatch:
   push:
     branches: [main]
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -58,16 +61,6 @@ jobs:
         run: python3 scripts/create_xml_resources.py
 
       - name: patch android manifest
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.21"
-
-      - name: Build Go sidecar for Android
-        run: |
-          cd sidecar-utls
-          GOOS=android GOARCH=arm64 go build -o ../src-tauri/binaries/sidecar-aarch64-linux-android
-          file ../src-tauri/binaries/sidecar-aarch64-linux-android
         run: |
           MANIFEST="src-tauri/gen/android/app/src/main/AndroidManifest.xml"
           if [ -f "$MANIFEST" ]; then
@@ -75,6 +68,17 @@ jobs:
             sed -i 's|<application|<application android:networkSecurityConfig="@xml/network_security_config"|' "$MANIFEST"
             sed -i '/<\/application>/i\        <service android:name=".ProxyService" android:foregroundServiceType="dataSync" android:exported="false" />' "$MANIFEST"
           fi
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build Go sidecar for Android
+        run: |
+          cd sidecar-utls
+          GOOS=android GOARCH=arm64 go build -o ../src-tauri/binaries/sidecar-aarch64-linux-android
+          file ../src-tauri/binaries/sidecar-aarch64-linux-android
 
       - name: build android
         env:
