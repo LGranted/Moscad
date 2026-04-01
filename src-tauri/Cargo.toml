@@ -87,9 +87,7 @@ tauri-plugin-autostart = "2.5.1"
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.14"
 log = "0.4"
-boring = { version = "4.9", features = [] }
 foreign-types = "0.5"
-hyper-boring = "4"
 hyper014 = { package = "hyper", version = "0.14", features = ["client", "http1", "http2"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 hickory-resolver = { version = "0.25.2", features = ["https-ring", "tokio"] }
