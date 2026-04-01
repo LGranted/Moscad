@@ -79,7 +79,7 @@ jobs:
       - name: Build Go sidecar for Android
         run: |
           cd sidecar-utls
-          GOOS=android GOARCH=arm64 go build -o ../src-tauri/binaries/sidecar-aarch64-linux-android
+          GOOS=linux GOARCH=arm64 go build -o ../src-tauri/binaries/sidecar-aarch64-linux-android
           file ../src-tauri/binaries/sidecar-aarch64-linux-android
 
       - name: build frontend explicitly
@@ -96,26 +96,11 @@ jobs:
           name: Moscad-Stealth-APK
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
 
-      - name: verify sidecar binary
-        run: |
-          echo "=== Sidecar binary ==="
-          ls -la src-tauri/binaries/
-          file src-tauri/binaries/sidecar-aarch64-linux-android || true
       - name: verify APK contents after build
         run: |
           APK_PATH=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" | head -1)
           echo "APK: $APK_PATH"
-          echo "=== APK contents (key files) ==="
-          unzip -l "$APK_PATH" | grep -E "(libantigravity_tools_lib.so|sidecar|index.html)"
-
-      - name: verify sidecar binary
-        run: |
-          echo "=== Sidecar binary ==="
-          ls -la src-tauri/binaries/
-          file src-tauri/binaries/sidecar-aarch64-linux-android || true
-      - name: verify APK contents after build
-        run: |
-          APK_PATH=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" | head -1)
-          echo "APK: $APK_PATH"
-          echo "=== APK contents (key files) ==="
-          unzip -l "$APK_PATH" | grep -E "(libantigravity_tools_lib.so|sidecar|index.html)"
+          echo "=== Size ==="
+          ls -lh "$APK_PATH"
+          echo "=== Key files ==="
+          unzip -l "$APK_PATH" | grep -E "(\.so|sidecar|index\.html|assets/)" | head -20
