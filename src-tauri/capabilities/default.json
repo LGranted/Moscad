@@ -4,9 +4,9 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "shell:allow-sidecar",
+    "shell:allow-spawn",
     {
-      "identifier": "shell:allow-sidecar",
+      "identifier": "shell:allow-spawn",
       "allow": [{ "sidecar": "sidecar" }]
     }
   ]
