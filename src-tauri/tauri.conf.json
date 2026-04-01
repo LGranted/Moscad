@@ -1,7 +1,7 @@
 {
   "productName": "Moscad",
   "version": "1.0.0",
-  "identifier": "com.lbjlaq.antigravity_tools",
+  "identifier": "com.lbjlaq.antigravity",
   "bundle": {
     "active": true,
     "targets": "all",
