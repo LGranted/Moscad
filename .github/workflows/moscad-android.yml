@@ -77,7 +77,7 @@ jobs:
       - name: Build Go sidecar for Android
         run: |
           cd sidecar-utls
-          GOOS=android GOARCH=arm64 go build -o ../src-tauri/binaries/sidecar-aarch64-linux-android
+          GOOS=android GOARCH=arm64 go build -o ../src-tauri/binaries/sidecar
           file ../src-tauri/binaries/sidecar-aarch64-linux-android
 
       - name: build android
