@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -9,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"crypto/tls"
 	"os"
 	"strings"
 	"sync"
