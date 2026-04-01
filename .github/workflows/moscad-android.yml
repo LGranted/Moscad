@@ -83,7 +83,7 @@ jobs:
           file ../src-tauri/binaries/sidecar-aarch64-linux-android
 
       - name: build frontend explicitly
-        run: npm run build
+        run: npx vite build && ls -la dist/
 
       - name: build android
         env:
