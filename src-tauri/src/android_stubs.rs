@@ -50,7 +50,6 @@ pub fn get_device_profiles() -> CommandResult<Value> {
         "platform": "linux/aarch64",
         "details": {
             "ide_version": ag_version,
-            "tls_mimicry": "chrome-boringssl",
             "proxy_core": "moscad-linux-layer"
         }
     }))
