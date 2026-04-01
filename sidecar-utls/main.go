@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
@@ -9,11 +11,31 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/net/http2"
 )
+
+const (
+	h2PrefaceStr      = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+	h2PrefaceLen      = 24
+	h2FrameHeaderLen  = 9
+	chromeWindowInc   = uint32(15663105) 
+)
+
+type h2Setting struct {
+	id  uint16
+	val uint32
+}
+
+var chromeSettings = []h2Setting{
+	{1, 65536},
+	{2, 0},
+	{4, 6291456},
+	{6, 262144},
+}
 
 func main() {
 	sockPath := "/data/data/com.lbjlaq.antigravity_tools/files/utls.sock"
@@ -21,64 +43,102 @@ func main() {
 
 	ln, err := net.Listen("unix", sockPath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Listen error: %v", err)
 	}
+	defer ln.Close()
 	os.Chmod(sockPath, 0777)
 
-	// Настройка HTTP/2 транспорта с отпечатком Chrome 133
-	h2Transport := &http2.Transport{
-		AllowHTTP: true,
-		Settings: []http2.Setting{
-			{ID: http2.SettingHeaderTableSize, Val: 65536},
-			{ID: http2.SettingEnablePush, Val: 0},
-			{ID: http2.SettingMaxConcurrentStreams, Val: 1000},
-			{ID: http2.SettingInitialWindowSize, Val: 6291456},
-			{ID: http2.SettingMaxFrameSize, Val: 16384},
-			{ID: http2.SettingMaxHeaderListSize, Val: 262144},
+	tr := &http2.Transport{
+		DialTLS: func(network, addr string, cfg *http2.Config) (net.Conn, error) {
+			return dialChrome(addr)
 		},
 	}
 
-	log.Printf("Engine Started: Mimicking Chrome 133 (TLS + H2)")
+	server := &http.Server{
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			targetURL := fmt.Sprintf("https://%s%s", r.Host, r.URL.RequestURI())
+			outReq, _ := http.NewRequest(r.Method, targetURL, r.Body)
+			for k, vv := range r.Header {
+				for _, v := range vv {
+					outReq.Header.Add(k, v)
+				}
+			}
 
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			continue
-		}
-		go handleProxy(conn, h2Transport)
+			resp, err := tr.RoundTrip(outReq)
+			if err != nil {
+				http.Error(w, err.Error(), 502)
+				return
+			}
+			defer resp.Body.Close()
+
+			for k, vv := range resp.Header {
+				for _, v := range vv {
+					w.Header().Add(k, v)
+				}
+			}
+			w.WriteHeader(resp.StatusCode)
+			io.Copy(w, resp.Body)
+		}),
 	}
+	log.Printf("[sidecar] Chrome 133 Engine ready")
+	server.Serve(ln)
 }
 
-func handleProxy(client net.Conn, h2 *http2.Transport) {
-	defer client.Close()
-	reader := bufio.NewReader(client)
-	req, err := http.ReadRequest(reader)
+func dialChrome(addr string) (net.Conn, error) {
+	host, _, _ := net.SplitHostPort(addr)
+	rawConn, err := net.DialTimeout("tcp", addr, 10*time.Second)
 	if err != nil {
-		return
+		return nil, err
 	}
-
-	// Формируем запрос к реальному серверу
-	targetURL := fmt.Sprintf("https://%s%s", req.Host, req.URL.RequestURI())
-	outReq, _ := http.NewRequest(req.Method, targetURL, req.Body)
-	for k, v := range req.Header {
-		outReq.Header[k] = v
+	uConn := utls.UClient(rawConn, &utls.Config{ServerName: host}, utls.HelloChrome_Auto)
+	if err := uConn.Handshake(); err != nil {
+		rawConn.Close()
+		return nil, err
 	}
+	return &chromeConn{Conn: uConn}, nil
+}
 
-	// uTLS Handshake
-	rawConn, _ := net.DialTimeout("tcp", req.Host+":443", 10*time.Second)
-	uConn := utls.UClient(rawConn, &utls.Config{ServerName: req.Host}, utls.HelloChrome_Auto)
-	uConn.Handshake()
+type chromeConn struct {
+	net.Conn
+	once sync.Once
+}
 
-	var resp *http.Response
-	if uConn.ConnectionState().NegotiatedProtocol == "h2" {
-		c2, _ := h2.NewClientConn(uConn)
-		resp, err = c2.RoundTrip(outReq)
-	} else {
-		// Fallback to H1
-		resp, err = http.DefaultClient.Do(outReq)
+func (c *chromeConn) Write(b []byte) (int, error) {
+	var err error
+	c.once.Do(func() {
+		if strings.HasPrefix(string(b), h2PrefaceStr) {
+			var buf bytes.Buffer
+			buf.WriteString(h2PrefaceStr)
+			buf.Write(buildSettingsFrame(chromeSettings))
+			buf.Write(buildWindowUpdateFrame(0, chromeWindowInc))
+			_, err = c.Conn.Write(buf.Bytes())
+			b = b[h2PrefaceLen:]
+		}
+	})
+	if err != nil {
+		return 0, err
 	}
+	return c.Conn.Write(b)
+}
 
-	if err == nil {
-		resp.Write(client)
+func buildSettingsFrame(ss []h2Setting) []byte {
+	payload := make([]byte, 6*len(ss))
+	for i, s := range ss {
+		binary.BigEndian.PutUint16(payload[i*6:], s.id)
+		binary.BigEndian.PutUint32(payload[i*6+2:], s.val)
 	}
+	f := make([]byte, h2FrameHeaderLen+len(payload))
+	f[0], f[1], f[2] = byte(len(payload)>>16), byte(len(payload)>>8), byte(len(payload))
+	f[3] = 0x4
+	copy(f[h2FrameHeaderLen:], payload)
+	return f
+}
+
+func buildWindowUpdateFrame(streamID, inc uint32) []byte {
+	f := make([]byte, h2FrameHeaderLen+4)
+	f[0], f[1], f[2] = 0, 0, 4
+	f[3] = 0x8
+	binary.BigEndian.PutUint32(f[5:], streamID&0x7FFFFFFF)
+	binary.BigEndian.PutUint32(f[9:], inc&0x7FFFFFFF)
+	return f
 }
