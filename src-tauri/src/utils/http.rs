@@ -1,17 +1,20 @@
-use hyper::{Client, Request, Body};
 use std::path::PathBuf;
 use tokio::net::UnixStream;
-use tower::Service;
-use std::task::{Context, Poll};
-use std::pin::Pin;
+use hyper::Request;
+use hyper_util::client::legacy::Client;
+use hyper_util::client::legacy::connect::Connect;
+use hyper_util::rt::TokioExecutor;
+use http_body_util::Full;
+use bytes::Bytes;
 use futures::future::BoxFuture;
+use std::task::{Context, Poll};
 
 #[derive(Clone)]
 pub struct UnixConnector {
     pub path: PathBuf,
 }
 
-impl Service<hyper::Uri> for UnixConnector {
+impl hyper::service::Service<hyper::Uri> for UnixConnector {
     type Response = UnixStream;
     type Error = std::io::Error;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
@@ -26,14 +29,23 @@ impl Service<hyper::Uri> for UnixConnector {
     }
 }
 
-pub fn get_client() -> Client<UnixConnector, Body> {
+impl Connect for UnixConnector {
+    fn connect(&self, _fut: hyper_util::client::legacy::connect::Connected, _dst: hyper::Uri) -> BoxFuture<'static, Result<(Self::Response, hyper_util::client::legacy::connect::Connected), Self::Error>> {
+        let path = self.path.clone();
+        Box::pin(async move {
+            let stream = UnixStream::connect(path).await?;
+            Ok((stream, hyper_util::client::legacy::connect::Connected::new()))
+        })
+    }
+}
+
+pub fn get_client() -> Client<UnixConnector, Full<Bytes>> {
     let connector = UnixConnector {
         path: PathBuf::from("/data/data/com.lbjlaq.antigravity_tools/files/utls.sock"),
     };
-    Client::builder().build(connector)
+    Client::builder(TokioExecutor::new()).build(connector)
 }
 
-// Заглушка для совместимости со старым кодом
-pub fn get_long_standard_client() -> Client<UnixConnector, Body> {
+pub fn get_long_standard_client() -> Client<UnixConnector, Full<Bytes>> {
     get_client()
 }
