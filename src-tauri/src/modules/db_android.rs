@@ -279,7 +279,7 @@ pub fn remove_from_blacklist(id: &str) -> Result<(), String> {
 pub fn get_blacklist() -> Result<Vec<IpBlacklistEntry>, String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
     let conn = &*conn;
-    let conn = \&*conn;
+    let conn = /&*conn;
     let mut stmt = conn.prepare(
         "SELECT id, ip_pattern, reason, created_at, expires_at, created_by, hit_count
          FROM ip_blacklist ORDER BY created_at DESC"
@@ -361,7 +361,7 @@ pub fn remove_from_whitelist(id: &str) -> Result<(), String> {
 pub fn get_whitelist() -> Result<Vec<IpWhitelistEntry>, String> {
     let conn = DB.lock().map_err(|e| e.to_string())?;
     let conn = &*conn;
-    let conn = \&*conn;
+    let conn = /&*conn;
     let mut stmt = conn.prepare(
         "SELECT id, ip_pattern, description, created_at FROM ip_whitelist ORDER BY created_at DESC"
     ).map_err(|e| e.to_string())?;
