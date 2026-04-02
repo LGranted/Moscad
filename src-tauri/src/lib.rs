@@ -8,7 +8,7 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle();
             // Запуск нашего Chrome 133 Sidecar
-            let sidecar_command = handle.shell().sidecar("sidecar").unwrap();
+            let Ok(sidecar_command) = handle.shell().sidecar("sidecar") else { return Ok(()); };
             let _ = sidecar_command.spawn().ok();
             
             Ok(())
