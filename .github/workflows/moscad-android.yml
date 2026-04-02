@@ -76,6 +76,17 @@ jobs:
           rm -rf src-tauri/gen/android
           npx tauri android init
 
+      - name: inspect tauri android structure
+        run: |
+          echo "=== gen/android structure ==="
+          find src-tauri/gen/android -name "*.gradle*" -o -name "*.kt" | head -20
+          echo "=== tauri.build.gradle.kts ==="
+          cat src-tauri/gen/android/app/tauri.build.gradle.kts 2>/dev/null || echo "NOT FOUND"
+          echo "=== build.gradle.kts ==="
+          cat src-tauri/gen/android/app/build.gradle.kts 2>/dev/null | head -30 || echo "NOT FOUND"
+          echo "=== assets dir ==="
+          ls src-tauri/gen/android/app/src/main/assets/ 2>/dev/null || echo "NO ASSETS DIR"
+
       - name: create xml resources
         run: python3 scripts/create_xml_resources.py
 
