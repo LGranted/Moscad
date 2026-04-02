@@ -210,7 +210,7 @@ pub static SESSION_ID: LazyLock<String> = LazyLock::new(|| {
 /// This prevents model rejection due to outdated client version headers.
 pub static USER_AGENT: LazyLock<String> = LazyLock::new(|| {
     #[cfg(target_os = "android")]
-    { format!("Antigravity/{} (Android)", env!("CARGO_PKG_VERSION")) }
+    { crate::utils::fingerprint::FingerprintConfig::current().user_agent.clone() }
     #[cfg(not(target_os = "android"))]
     {
         let (config, _) = resolve_version_config();

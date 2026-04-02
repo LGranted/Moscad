@@ -118,7 +118,7 @@ async fn fetch_project_id(access_token: &str, email: &str, account_id: Option<&s
         .post(format!("{}/v1internal:loadCodeAssist", CLOUD_CODE_BASE_URL))
         .header(rquest::header::AUTHORIZATION, format!("Bearer {}", access_token))
         .header(rquest::header::CONTENT_TYPE, "application/json")
-        .header(rquest::header::USER_AGENT, crate::constants::NATIVE_OAUTH_USER_AGENT.as_str())
+        .header(rquest::header::USER_AGENT, &crate::utils::fingerprint::FingerprintConfig::current().user_agent)
         .json(&meta)
         .send()
         .await;
@@ -216,7 +216,7 @@ pub async fn fetch_quota_with_cache(
         match client
             .post(*ep_url)
             .bearer_auth(access_token)
-            .header(rquest::header::USER_AGENT, crate::constants::NATIVE_OAUTH_USER_AGENT.as_str())
+            .header(rquest::header::USER_AGENT, &crate::utils::fingerprint::FingerprintConfig::current().user_agent)
             .json(&payload)
             .send()
             .await

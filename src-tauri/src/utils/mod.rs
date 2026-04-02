@@ -1,7 +1,10 @@
 pub mod http;
 pub mod fingerprint;
+pub mod atomic;
+pub mod protobuf;
+pub mod command;
+pub mod crypto;
 #[cfg(target_os = "android")]
 pub mod doh;
-pub mod atomic;
 #[cfg(target_os = "android")]
 pub mod token_store;

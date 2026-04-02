@@ -90,12 +90,12 @@ pub async fn exchange_code(code: &str, redirect_uri: &str) -> Result<TokenRespon
 
     tracing::debug!(
         "[OAuth] Sending exchange_code request with User-Agent: {}",
-        "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
+        &crate::utils::fingerprint::FingerprintConfig::current().user_agent
     );
 
     let response = client
         .post(TOKEN_URL)
-        .header(rquest::header::USER_AGENT, "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36")
+        .header(rquest::header::USER_AGENT, &crate::utils::fingerprint::FingerprintConfig::current().user_agent)
         .form(&params)
         .send()
         .await
@@ -157,12 +157,12 @@ pub async fn refresh_access_token(refresh_token: &str, account_id: Option<&str>)
     
     tracing::debug!(
         "[OAuth] Sending refresh_access_token request with User-Agent: {}",
-        "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
+        &crate::utils::fingerprint::FingerprintConfig::current().user_agent
     );
 
     let response = client
         .post(TOKEN_URL)
-        .header(rquest::header::USER_AGENT, "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36")
+        .header(rquest::header::USER_AGENT, &crate::utils::fingerprint::FingerprintConfig::current().user_agent)
         .form(&params)
         .send()
         .await
