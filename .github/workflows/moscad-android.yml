@@ -91,6 +91,13 @@ jobs:
           cp -r dist src-tauri/../dist || true
           echo "=== dist copied ==="
 
+      - name: copy frontend to android assets
+        run: |
+          mkdir -p src-tauri/gen/android/app/src/main/assets
+          cp -r dist/* src-tauri/gen/android/app/src/main/assets/
+          echo "=== Android assets ==="
+          ls -la src-tauri/gen/android/app/src/main/assets/
+
       - name: build android
         env:
           ANDROID_NDK_HOME: ${{ env.NDK_HOME }}
