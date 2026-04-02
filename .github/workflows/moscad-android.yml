@@ -94,7 +94,15 @@ jobs:
       - name: build android
         env:
           ANDROID_NDK_HOME: ${{ env.NDK_HOME }}
-        run: npx tauri android build --target aarch64
+        run: |
+          echo "=== dist contents ==="
+          ls -la dist/
+          echo "=== sidecar ==="
+          ls -la src-tauri/binaries/
+          npx tauri android build --target aarch64
+          echo "=== APK assets after build ==="
+          APK=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" | head -1)
+          unzip -l "$APK" | grep -E "(index\.html|sidecar|assets/)" | head -20
 
       - name: upload apk
         uses: actions/upload-artifact@v4
