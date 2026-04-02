@@ -1,57 +1,55 @@
-use std::path::PathBuf;
-use tokio::net::UnixStream;
-use hyper_util::client::legacy::Client;
-use hyper_util::client::legacy::connect::Connect;
-use hyper_util::rt::TokioExecutor;
-use http_body_util::Full;
-use bytes::Bytes;
-use futures::future::BoxFuture;
-use std::task::{Context, Poll};
+// src-tauri/src/utils/http.rs
+// Обычные клиенты: reqwest (совместимость с oauth.rs, quota.rs и др.)
+// Stealth клиент: hyper014 через Unix Domain Socket → Go uTLS сайдкар
 
-#[derive(Clone)]
-pub struct UnixConnector {
-    pub path: PathBuf,
-}
+#[cfg(not(target_os = "android"))]
+use crate::modules::config::load_app_config;
+use once_cell::sync::Lazy;
+use reqwest::{Client, Proxy};
+use std::time::Duration;
 
-impl hyper::service::Service<hyper::Uri> for UnixConnector {
-    type Response = UnixStream;
-    type Error = std::io::Error;
-    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
+// ── Глобальные shared reqwest клиенты ────────────────────────────────────────
 
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
+pub static SHARED_CLIENT: Lazy<Client> = Lazy::new(|| create_base_client(15));
+pub static SHARED_CLIENT_LONG: Lazy<Client> = Lazy::new(|| create_base_client(60));
+pub static SHARED_STANDARD_CLIENT: Lazy<Client> = Lazy::new(|| create_base_client(15));
+pub static SHARED_STANDARD_CLIENT_LONG: Lazy<Client> = Lazy::new(|| create_base_client(60));
+
+fn create_base_client(timeout_secs: u64) -> Client {
+    let mut builder = Client::builder()
+        .timeout(Duration::from_secs(timeout_secs))
+        .connect_timeout(Duration::from_secs(20))
+        .pool_max_idle_per_host(8)
+        .pool_idle_timeout(Duration::from_secs(90))
+        .tcp_keepalive(Duration::from_secs(60))
+        .user_agent(
+            crate::utils::fingerprint::FingerprintConfig::current()
+                .user_agent
+                .clone(),
+        );
+
+    #[cfg(not(target_os = "android"))]
+    if let Ok(config) = load_app_config() {
+        let proxy_cfg = config.proxy.upstream_proxy;
+        if proxy_cfg.enabled && !proxy_cfg.url.is_empty() {
+            match Proxy::all(&proxy_cfg.url) {
+                Ok(proxy) => { builder = builder.proxy(proxy); }
+                Err(e) => { tracing::error!("Invalid proxy URL '{}': {}", proxy_cfg.url, e); }
+            }
+        }
     }
 
-    fn call(&mut self, _dst: hyper::Uri) -> Self::Future {
-        let path = self.path.clone();
-        Box::pin(async move { UnixStream::connect(path).await })
-    }
+    builder.build().unwrap_or_else(|_| Client::new())
 }
 
-impl Connect for UnixConnector {
-    fn connect(&self, _fut: hyper_util::client::legacy::connect::Connected, _dst: hyper::Uri) -> BoxFuture<'static, Result<(Self::Response, hyper_util::client::legacy::connect::Connected), Self::Error>> {
-        let path = self.path.clone();
-        Box::pin(async move {
-            let stream = UnixStream::connect(path).await?;
-            Ok((stream, hyper_util::client::legacy::connect::Connected::new()))
-        })
-    }
-}
+pub fn get_client() -> Client { SHARED_CLIENT.clone() }
+pub fn get_long_client() -> Client { SHARED_CLIENT_LONG.clone() }
+pub fn get_standard_client() -> Client { SHARED_STANDARD_CLIENT.clone() }
+pub fn get_long_standard_client() -> Client { SHARED_STANDARD_CLIENT_LONG.clone() }
 
-pub fn get_client() -> Client<UnixConnector, Full<Bytes>> {
-    let connector = UnixConnector {
-        path: PathBuf::from("/data/data/com.lbjlaq.antigravity/files/utls.sock"),
-    };
-    Client::builder(TokioExecutor::new()).build(connector)
-}
+// ── Stealth модуль: hyper014 → UDS → Go сайдкар (Chrome 131 TLS) ─────────────
 
-pub fn get_long_standard_client() -> Client<UnixConnector, Full<Bytes>> {
-    get_client()
-}
-
-// ── Stealth модуль для proxy_android_stub.rs ─────────────────────────────────
-// proxy_android_stub использует hyper014, поэтому здесь отдельный модуль
-
+#[cfg(target_os = "android")]
 pub mod stealth {
     use std::path::PathBuf;
     use tokio::net::UnixStream;
@@ -61,6 +59,9 @@ pub mod stealth {
     use std::io;
     use std::pin::Pin;
     use std::task::{Context, Poll};
+
+    pub const UTLS_SOCK_PATH: &str =
+        "/data/data/com.lbjlaq.antigravity/files/utls.sock";
 
     pub type StealthClient = hyper014::Client<UnixConnector, hyper014::Body>;
 
@@ -94,7 +95,7 @@ pub mod stealth {
 
     pub fn get_stealth_client_for(_account_seed: Option<&str>) -> anyhow::Result<StealthClient> {
         let connector = UnixConnector {
-            path: PathBuf::from("/data/data/com.lbjlaq.antigravity/files/utls.sock"),
+            path: PathBuf::from(UTLS_SOCK_PATH),
         };
         let client = hyper014::Client::builder()
             .http1_only(true)
