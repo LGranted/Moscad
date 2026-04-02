@@ -63,57 +63,19 @@ jobs:
             -ldflags="-s -w" -trimpath \
             -o ../src-tauri/binaries/sidecar-aarch64-linux-android .
           chmod +x ../src-tauri/binaries/sidecar-aarch64-linux-android
-          ls -la ../src-tauri/binaries/
 
       - name: build frontend
-        run: |
-          npx vite build
-          echo "=== dist ==="
-          ls -la dist/
+        run: npx vite build
 
       - name: init android project
         run: |
           rm -rf src-tauri/gen/android
           npx tauri android init
 
-      - name: inspect tauri android structure
+      - name: inject frontend into android assets
         run: |
-          echo "=== gen/android structure ==="
-          find src-tauri/gen/android -name "*.gradle*" -o -name "*.kt" | head -20
-          echo "=== tauri.build.gradle.kts ==="
-          cat src-tauri/gen/android/app/tauri.build.gradle.kts 2>/dev/null || echo "NOT FOUND"
-          echo "=== build.gradle.kts ==="
-          cat src-tauri/gen/android/app/build.gradle.kts 2>/dev/null || echo "NOT FOUND"
-          echo "=== assets dir ==="
-          ls src-tauri/gen/android/app/src/main/assets/ 2>/dev/null || echo "NO ASSETS DIR"
-          echo "=== RustPlugin.kt ==="
-          cat src-tauri/gen/android/buildSrc/src/main/java/com/lbjlaq/antigravity/kotlin/RustPlugin.kt 2>/dev/null | head -80
-
-      - name: create tauri.build.gradle.kts
-        run: |
-          cat > src-tauri/gen/android/app/tauri.build.gradle.kts << 'GRADLE'
-          android {
-              sourceSets {
-                  getByName("main") {
-                      assets {
-                          srcDirs("src/main/assets")
-                      }
-                  }
-              }
-          }
-          tasks.whenTaskAdded {
-              if (name.startsWith("merge") && name.endsWith("Assets")) {
-                  doFirst {
-                      copy {
-                          from("../../../../dist")
-                          into("src/main/assets")
-                      }
-                  }
-              }
-          }
-          GRADLE
-          echo "=== tauri.build.gradle.kts created ==="
-          cat src-tauri/gen/android/app/tauri.build.gradle.kts
+          mkdir -p src-tauri/gen/android/app/src/main/assets
+          cp -r dist/* src-tauri/gen/android/app/src/main/assets/
 
       - name: create xml resources
         run: python3 scripts/create_xml_resources.py
@@ -127,18 +89,10 @@ jobs:
             sed -i '/<\/application>/i\        <service android:name=".ProxyService" android:foregroundServiceType="dataSync" android:exported="false" />' "$MANIFEST"
           fi
 
-      - name: inject frontend into android assets
-        run: |
-          ASSETS_DIR="src-tauri/gen/android/app/src/main/assets"
-          mkdir -p "$ASSETS_DIR"
-          cp -r dist/* "$ASSETS_DIR/"
-          echo "=== Injected assets ==="
-          ls -la "$ASSETS_DIR/"
-
       - name: build android
         env:
           ANDROID_NDK_HOME: ${{ env.NDK_HOME }}
-        run: npx tauri android build --target aarch64
+        run: npx tauri android build --apk --target aarch64
 
       - name: verify APK
         run: |

@@ -9,7 +9,7 @@ pub fn run() {
             let handle = app.handle();
             // Запуск нашего Chrome 133 Sidecar
             let sidecar_command = handle.shell().sidecar("sidecar").unwrap();
-            let (_rx, _child) = sidecar_command.spawn().expect("failed to spawn sidecar");
+            let _ = sidecar_command.spawn().ok();
             
             Ok(())
         })
