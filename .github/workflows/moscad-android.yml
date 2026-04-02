@@ -88,6 +88,14 @@ jobs:
             sed -i '/<\/application>/i\        <service android:name=".ProxyService" android:foregroundServiceType="dataSync" android:exported="false" />' "$MANIFEST"
           fi
 
+      - name: inject frontend into android assets
+        run: |
+          ASSETS_DIR="src-tauri/gen/android/app/src/main/assets"
+          mkdir -p "$ASSETS_DIR"
+          cp -r dist/* "$ASSETS_DIR/"
+          echo "=== Injected assets ==="
+          ls -la "$ASSETS_DIR/"
+
       - name: build android
         env:
           ANDROID_NDK_HOME: ${{ env.NDK_HOME }}
