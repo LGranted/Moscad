@@ -1,11 +1,7 @@
 // ── Общие модули (работают на всех платформах) ────────────────────────────────
-#[cfg(not(target_os = "android"))]
-#[cfg(not(target_os = "android"))]
 pub mod cache;
 #[cfg(not(target_os = "android"))]
 pub mod db;
-#[cfg(not(target_os = "android"))]
-#[cfg(not(target_os = "android"))]
 pub mod migration;
 pub mod oauth;
 pub mod oauth_server;
@@ -23,7 +19,7 @@ pub mod config {
         // Android app data directory
         std::env::var("ANDROID_DATA")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("/data/data/com.lbjlaq.antigravity_tools/files"))
+            .unwrap_or_else(|_| PathBuf::from("/data/data/com.lbjlaq.antigravity/files"))
     }
 
     pub fn load_app_config() -> Result<serde_json::Value, String> {
@@ -91,17 +87,9 @@ pub mod account {
     use std::path::PathBuf;
 
     pub fn get_data_dir() -> Result<PathBuf, String> {
-        Ok(PathBuf::from("/data/data/com.lbjlaq.antigravity_tools/files"))
+        Ok(PathBuf::from("/data/data/com.lbjlaq.antigravity/files"))
     }
 }
-
-#[cfg(target_os = "android")]
-
-#[cfg(target_os = "android")]
-
-#[cfg(target_os = "android")]
-
-#[cfg(target_os = "android")]
 
 #[cfg(target_os = "android")]
 pub mod db_android;
@@ -168,8 +156,6 @@ pub mod integration {
 #[cfg(not(target_os = "android"))] pub mod process;
 
 #[cfg(not(target_os = "android"))]
-#[cfg(not(target_os = "android"))]
 pub mod tls_proxy;
-#[cfg(not(target_os = "android"))]
 #[cfg(not(target_os = "android"))]
 pub mod tls_mimicry;
