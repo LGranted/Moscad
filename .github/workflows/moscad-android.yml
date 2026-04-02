@@ -89,6 +89,32 @@ jobs:
           echo "=== RustPlugin.kt ==="
           cat src-tauri/gen/android/buildSrc/src/main/java/com/lbjlaq/antigravity/kotlin/RustPlugin.kt 2>/dev/null | head -80
 
+      - name: create tauri.build.gradle.kts
+        run: |
+          cat > src-tauri/gen/android/app/tauri.build.gradle.kts << 'GRADLE'
+          android {
+              sourceSets {
+                  getByName("main") {
+                      assets {
+                          srcDirs("src/main/assets")
+                      }
+                  }
+              }
+          }
+          tasks.whenTaskAdded {
+              if (name.startsWith("merge") && name.endsWith("Assets")) {
+                  doFirst {
+                      copy {
+                          from("../../../../dist")
+                          into("src/main/assets")
+                      }
+                  }
+              }
+          }
+          GRADLE
+          echo "=== tauri.build.gradle.kts created ==="
+          cat src-tauri/gen/android/app/tauri.build.gradle.kts
+
       - name: create xml resources
         run: python3 scripts/create_xml_resources.py
 
