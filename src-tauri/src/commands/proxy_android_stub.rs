@@ -15,7 +15,7 @@ fn get_antigravity_version() -> String {
 }
 
 fn get_goog_api_client() -> String {
-    "gl-node/22.18.0".to_string()
+    "google-cloud-sdk vscode/1.86.0".to_string()
 }
 
 #[derive(Clone)]

@@ -30,7 +30,7 @@ impl FingerprintConfig {
             // User-Agent имитирует десктопный Antigravity клиент
             // Формат: antigravity/<version> <platform>/<arch> google-api-nodejs-client/<lib_version>
             let user_agent = format!(
-                "antigravity/{} linux/aarch64 google-api-nodejs-client/10.3.0",
+                "antigravity/{} darwin/arm64",
                 ag_version
             );
 
