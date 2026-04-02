@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -39,9 +38,6 @@ jobs:
       - name: install dependencies
         run: npm install --force
 
-      - name: clean broken android folder
-        run: rm -rf src-tauri/gen/android
-
       - name: create machine-uid stub
         run: |
           mkdir -p _patches/machine-uid/src
@@ -54,10 +50,31 @@ jobs:
             echo -e "\n[patch.crates-io]\nmachine-uid = { path = \"../_patches/machine-uid\" }" >> src-tauri/Cargo.toml
           fi
 
-      - name: clean android project fully
-        run: rm -rf src-tauri/gen/android
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.8'
+
+      - name: Build Go sidecar for Android
+        run: |
+          cd sidecar-utls
+          go mod tidy
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build \
+            -ldflags="-s -w" -trimpath \
+            -o ../src-tauri/binaries/sidecar-aarch64-linux-android .
+          chmod +x ../src-tauri/binaries/sidecar-aarch64-linux-android
+          ls -la ../src-tauri/binaries/
+
+      - name: build frontend
+        run: |
+          npx vite build
+          echo "=== dist ==="
+          ls -la dist/
+
       - name: init android project
-        run: npx tauri android init
+        run: |
+          rm -rf src-tauri/gen/android
+          npx tauri android init
 
       - name: create xml resources
         run: python3 scripts/create_xml_resources.py
@@ -71,57 +88,20 @@ jobs:
             sed -i '/<\/application>/i\        <service android:name=".ProxyService" android:foregroundServiceType="dataSync" android:exported="false" />' "$MANIFEST"
           fi
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25.8'
-
-      - name: Build Go sidecar for Android
-        run: |
-          cd sidecar-utls
-          GOOS=linux GOARCH=arm64 go build -o ../src-tauri/binaries/sidecar-aarch64-linux-android
-          file ../src-tauri/binaries/sidecar-aarch64-linux-android
-
-      - name: build frontend explicitly
-        run: npx vite build && ls -la dist/
-
-      - name: copy dist to tauri
-        run: |
-          ls -la dist/
-          cp -r dist src-tauri/../dist || true
-          echo "=== dist copied ==="
-
-      - name: copy frontend to android assets
-        run: |
-          mkdir -p src-tauri/gen/android/app/src/main/assets
-          cp -r dist/* src-tauri/gen/android/app/src/main/assets/
-          echo "=== Android assets ==="
-          ls -la src-tauri/gen/android/app/src/main/assets/
-
       - name: build android
         env:
           ANDROID_NDK_HOME: ${{ env.NDK_HOME }}
+        run: npx tauri android build --target aarch64
+
+      - name: verify APK
         run: |
-          echo "=== dist contents ==="
-          ls -la dist/
-          echo "=== sidecar ==="
-          ls -la src-tauri/binaries/
-          npx tauri android build --target aarch64
-          echo "=== APK assets after build ==="
           APK=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" | head -1)
-          unzip -l "$APK" | grep -E "(index\.html|sidecar|assets/)" | head -20
+          echo "APK: $APK"
+          ls -lh "$APK"
+          unzip -l "$APK" | grep -E "(\.so|sidecar|index\.html|assets/)" | head -30
 
       - name: upload apk
         uses: actions/upload-artifact@v4
         with:
           name: Moscad-Stealth-APK
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
-
-      - name: verify APK contents after build
-        run: |
-          APK_PATH=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" | head -1)
-          echo "APK: $APK_PATH"
-          echo "=== Size ==="
-          ls -lh "$APK_PATH"
-          echo "=== Key files ==="
-          unzip -l "$APK_PATH" | grep -E "(\.so|sidecar|index\.html|assets/)" | head -20
