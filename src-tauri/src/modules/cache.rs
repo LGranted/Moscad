@@ -21,7 +21,7 @@ pub struct ClearResult {
 
 /// Get all known Antigravity cache paths for the current platform
 pub fn get_antigravity_cache_paths() -> Vec<PathBuf> {
-    let mut paths = Vec::new();
+    let paths = Vec::new();
 
     #[cfg(target_os = "macos")]
     {

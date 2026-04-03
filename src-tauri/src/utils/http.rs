@@ -5,7 +5,7 @@
 #[cfg(not(target_os = "android"))]
 use crate::modules::config::load_app_config;
 use once_cell::sync::Lazy;
-use reqwest::{Client, Proxy};
+use reqwest::Client;
 use std::time::Duration;
 
 // ── Глобальные shared reqwest клиенты ────────────────────────────────────────
@@ -16,7 +16,7 @@ pub static SHARED_STANDARD_CLIENT: Lazy<Client> = Lazy::new(|| create_base_clien
 pub static SHARED_STANDARD_CLIENT_LONG: Lazy<Client> = Lazy::new(|| create_base_client(60));
 
 fn create_base_client(timeout_secs: u64) -> Client {
-    let mut builder = Client::builder()
+    let builder = Client::builder()
         .timeout(Duration::from_secs(timeout_secs))
         .connect_timeout(Duration::from_secs(20))
         .pool_max_idle_per_host(8)
@@ -71,7 +71,7 @@ pub mod stealth {
     }
 
     impl tower::Service<Uri> for UnixConnector {
-        type Response = UnixStream;
+        type Response = UnixStreamWrapper;
         type Error = io::Error;
         type Future = Pin<Box<dyn Future<Output = io::Result<UnixStream>> + Send + 'static>>;
 
@@ -81,12 +81,29 @@ pub mod stealth {
 
         fn call(&mut self, _: Uri) -> Self::Future {
             let path = self.path.clone();
-            Box::pin(async move { UnixStream::connect(path).await })
+            Box::pin(async move { UnixStream::connect(path).await.map(UnixStreamWrapper) })
         }
     }
 
-    impl Connection for UnixStream {
+    pub struct UnixStreamWrapper(UnixStream);
+    impl Connection for UnixStreamWrapper {
         fn connected(&self) -> Connected { Connected::new() }
+    }
+    impl tokio::io::AsyncRead for UnixStreamWrapper {
+        fn poll_read(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &mut tokio::io::ReadBuf<'_>) -> std::task::Poll<std::io::Result<()>> {
+            std::pin::Pin::new(&mut self.0).poll_read(cx, buf)
+        }
+    }
+    impl tokio::io::AsyncWrite for UnixStreamWrapper {
+        fn poll_write(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &[u8]) -> std::task::Poll<std::io::Result<usize>> {
+            std::pin::Pin::new(&mut self.0).poll_write(cx, buf)
+        }
+        fn poll_flush(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<std::io::Result<()>> {
+            std::pin::Pin::new(&mut self.0).poll_flush(cx)
+        }
+        fn poll_shutdown(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<std::io::Result<()>> {
+            std::pin::Pin::new(&mut self.0).poll_shutdown(cx)
+        }
     }
 
     pub fn get_stealth_client() -> anyhow::Result<StealthClient> {
@@ -98,7 +115,6 @@ pub mod stealth {
             path: PathBuf::from(UTLS_SOCK_PATH),
         };
         let client = hyper014::Client::builder()
-            .http1_only(true)
             .pool_max_idle_per_host(8)
             .pool_idle_timeout(std::time::Duration::from_secs(90))
             .build::<_, hyper014::Body>(connector);

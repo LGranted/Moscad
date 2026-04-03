@@ -137,7 +137,7 @@ pub async fn exchange_code(code: &str, redirect_uri: &str) -> Result<TokenRespon
 }
 
 /// Refresh access_token using refresh_token
-pub async fn refresh_access_token(refresh_token: &str, account_id: Option<&str>) -> Result<TokenResponse, String> {
+pub async fn refresh_access_token(refresh_token: &str, _account_id: Option<&str>) -> Result<TokenResponse, String> {
     // [PHASE 2] 根据 account_id 使用对应的代理
     let client = crate::utils::http::get_long_standard_client();
     
@@ -189,7 +189,7 @@ pub async fn refresh_access_token(refresh_token: &str, account_id: Option<&str>)
 }
 
 /// Get user info
-pub async fn get_user_info(access_token: &str, account_id: Option<&str>) -> Result<UserInfo, String> {
+pub async fn get_user_info(access_token: &str, _account_id: Option<&str>) -> Result<UserInfo, String> {
     let client = crate::utils::http::get_client();
     
     let response = client
@@ -214,7 +214,7 @@ pub async fn get_user_info(access_token: &str, account_id: Option<&str>) -> Resu
 #[cfg(not(target_os = "android"))]
 pub async fn ensure_fresh_token(
     current_token: &crate::models::TokenData,
-    account_id: Option<&str>,
+    _account_id: Option<&str>,
 ) -> Result<crate::models::TokenData, String> {
     let now = chrono::Local::now().timestamp();
     

@@ -138,5 +138,5 @@ pub async fn get_fresh_token() -> Option<String> {
 pub fn get_current_machine_id() -> Option<String> {
     let account_id = CURRENT_ACCOUNT_ID.lock().ok()?.clone()?;
     let store = TOKEN_STORE.lock().ok()?;
-    store.get(&account_id).map(|e| e.machine_id.clone())
+    store.get(&account_id).map(|e| e.account_id.clone())
 }

@@ -120,13 +120,8 @@ pub struct Account {
 
 /// Генерируем уникальный ANDROID_ID для каждого аккаунта
 fn generate_machine_id() -> String {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-    let mut hasher = DefaultHasher::new();
-    let seed = uuid::Uuid::new_v4().to_string();
-    seed.hash(&mut hasher);
-    chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0).hash(&mut hasher);
-    format!("{:016x}", hasher.finish())
+    // UUID v4 формат — идентичен реальному Antigravity x-machine-id
+    uuid::Uuid::new_v4().to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -170,7 +165,7 @@ pub fn list_accounts() -> Result<Vec<Account>, String> {
          FROM accounts ORDER BY created_at ASC"
     ).map_err(|e| e.to_string())?;
 
-    stmt.query_map([], |row| Ok(Account {
+    let x = stmt.query_map([], |row| Ok(Account {
         id:              row.get(0)?,
         email:           row.get(1)?,
         refresh_token:   row.get(2)?,
@@ -184,7 +179,7 @@ pub fn list_accounts() -> Result<Vec<Account>, String> {
     }))
     .map_err(|e| e.to_string())?
     .collect::<Result<Vec<_>, _>>()
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string()); x
 }
 
 pub fn add_account(email: &str, refresh_token: &str) -> Result<Account, String> {
@@ -284,7 +279,7 @@ pub fn get_blacklist() -> Result<Vec<IpBlacklistEntry>, String> {
         "SELECT id, ip_pattern, reason, created_at, expires_at, created_by, hit_count
          FROM ip_blacklist ORDER BY created_at DESC"
     ).map_err(|e| e.to_string())?;
-    stmt.query_map([], |row| Ok(IpBlacklistEntry {
+    let x = stmt.query_map([], |row| Ok(IpBlacklistEntry {
         id: row.get(0)?, ip_pattern: row.get(1)?,
         reason: row.get(2)?, created_at: row.get(3)?,
         expires_at: row.get(4)?, created_by: row.get(5)?,
@@ -292,7 +287,7 @@ pub fn get_blacklist() -> Result<Vec<IpBlacklistEntry>, String> {
     }))
     .map_err(|e| e.to_string())?
     .collect::<Result<Vec<_>, _>>()
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string()); x
 }
 
 pub fn is_ip_in_blacklist(ip: &str) -> Result<bool, String> {
@@ -365,13 +360,13 @@ pub fn get_whitelist() -> Result<Vec<IpWhitelistEntry>, String> {
     let mut stmt = conn.prepare(
         "SELECT id, ip_pattern, description, created_at FROM ip_whitelist ORDER BY created_at DESC"
     ).map_err(|e| e.to_string())?;
-    stmt.query_map([], |row| Ok(IpWhitelistEntry {
+    let x = stmt.query_map([], |row| Ok(IpWhitelistEntry {
         id: row.get(0)?, ip_pattern: row.get(1)?,
         description: row.get(2)?, created_at: row.get(3)?,
     }))
     .map_err(|e| e.to_string())?
     .collect::<Result<Vec<_>, _>>()
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string()); x
 }
 
 pub fn is_ip_in_whitelist(ip: &str) -> Result<bool, String> {

@@ -2,6 +2,7 @@
 pub mod cache;
 #[cfg(not(target_os = "android"))]
 pub mod db;
+#[cfg(not(target_os = "android"))]
 pub mod migration;
 pub mod oauth;
 pub mod oauth_server;
