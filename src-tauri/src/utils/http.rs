@@ -73,7 +73,7 @@ pub mod stealth {
     impl tower::Service<Uri> for UnixConnector {
         type Response = UnixStreamWrapper;
         type Error = io::Error;
-        type Future = Pin<Box<dyn Future<Output = io::Result<UnixStream>> + Send + 'static>>;
+        type Future = Pin<Box<dyn Future<Output = io::Result<UnixStreamWrapper>> + Send + 'static>>;
 
         fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
             Poll::Ready(Ok(()))

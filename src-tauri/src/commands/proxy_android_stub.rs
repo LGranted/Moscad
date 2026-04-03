@@ -59,7 +59,6 @@ pub async fn handle_android_stealth_request(
 
     // Синхронизируем с darwin/arm64 fingerprint
     builder = builder.header("user-agent", get_chrome_ua());
-    builder = builder.header("client-metadata", r#"{"ideType":"ANTIGRAVITY","platform":"MACOS","pluginType":"GEMINI"}"#);
     if let Some(machine_id) = crate::utils::token_store::get_current_machine_id() {
         builder = builder.header("x-machine-id", machine_id);
     }
@@ -115,7 +114,6 @@ pub async fn handle_android_stealth_request_stream(
 
     // Синхронизируем с darwin/arm64 fingerprint
     builder = builder.header("user-agent", get_chrome_ua());
-    builder = builder.header("client-metadata", r#"{"ideType":"ANTIGRAVITY","platform":"MACOS","pluginType":"GEMINI"}"#);
     if let Some(machine_id) = crate::utils::token_store::get_current_machine_id() {
         builder = builder.header("x-machine-id", machine_id);
     }
