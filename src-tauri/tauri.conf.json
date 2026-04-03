@@ -35,10 +35,5 @@
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
-  },
-  "plugins": {
-    "shell": {
-      "sidecar": true
-    }
   }
 }
