@@ -442,8 +442,7 @@ pub async fn sync_account_from_db(account_id: String) -> CommandResult<Value> {
 
 // ── Import custom db (Android версия без migration модуля) ────────────────────
 pub fn extract_refresh_token_android(path: &std::path::PathBuf) -> Result<String, String> {
-    Err("Import from desktop DB is not supported on Android (protobuf not available)".into())
-};
+    use base64::{Engine as _, engine::general_purpose};
     let conn = rusqlite::Connection::open(path)
         .map_err(|e| format!("Failed to open database: {}", e))?;
     let data: String = conn.query_row(
