@@ -89,6 +89,12 @@ jobs:
             sed -i '/<\/application>/i\        <service android:name=".ProxyService" android:foregroundServiceType="dataSync" android:exported="false" />' "$MANIFEST"
           fi
 
+      - name: check sidecar exists
+        run: |
+          echo "=== Sidecar check ==="
+          ls -la src-tauri/binaries/ || echo "NO BINARIES DIR"
+          file src-tauri/binaries/sidecar-aarch64-linux-android || echo "NO SIDECAR"
+
       - name: build android
         env:
           ANDROID_NDK_HOME: ${{ env.NDK_HOME }}
