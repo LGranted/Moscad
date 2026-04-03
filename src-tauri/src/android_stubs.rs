@@ -467,3 +467,10 @@ pub fn extract_refresh_token_android(path: &std::path::PathBuf) -> Result<String
         .map_err(|e| e)?.ok_or("Refresh token not found")?;
     String::from_utf8(refresh).map_err(|_| "Refresh token not UTF-8".to_string())
 }
+
+#[command]
+pub async fn save_text_file(path: String, content: String) -> CommandResult<()> {
+    std::fs::write(&path, &content)
+        .map_err(|e| format!("Failed to save file: {}", e))
+}
+#[command] pub async fn set_window_theme(_theme: String) -> CommandResult<()> { Ok(()) }

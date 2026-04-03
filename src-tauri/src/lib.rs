@@ -168,7 +168,9 @@ pub fn run() {
             #[cfg(target_os = "android")] export_proxy_logs,
             #[cfg(target_os = "android")] export_proxy_logs_json,
             #[cfg(target_os = "android")] get_proxy_logs,
-            #[cfg(target_os = "android")] handle_android_stealth_request_stream
+            #[cfg(target_os = "android")] handle_android_stealth_request_stream,
+            #[cfg(target_os = "android")] save_text_file,
+            #[cfg(target_os = "android")] set_window_theme
         ])
         .setup(|app| {
             #[cfg(target_os = "android")]
