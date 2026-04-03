@@ -260,9 +260,6 @@ pub async fn check_proxy_health() -> CommandResult<Value> {
             "message": e.to_string()
         }))
     }
-})),
-        Err(e)   => Ok(json!({"status": "error", "message": e.to_string()})),
-    }
 }
 
 // ── Config ────────────────────────────────────────────────────────────────────
