@@ -74,8 +74,13 @@ jobs:
 
       - name: inject frontend into android assets
         run: |
-          mkdir -p src-tauri/gen/android/app/src/main/assets
+          mkdir -p src-tauri/gen/android/app/src/main/assets/binaries
           cp -r dist/* src-tauri/gen/android/app/src/main/assets/
+          cp src-tauri/binaries/sidecar-aarch64-linux-android src-tauri/gen/android/app/src/main/assets/binaries/
+          chmod +x src-tauri/gen/android/app/src/main/assets/binaries/sidecar-aarch64-linux-android
+          echo "=== Assets after inject ==="
+          ls -la src-tauri/gen/android/app/src/main/assets/
+          ls -la src-tauri/gen/android/app/src/main/assets/binaries/
 
       - name: create xml resources
         run: python3 scripts/create_xml_resources.py
