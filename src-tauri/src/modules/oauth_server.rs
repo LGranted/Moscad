@@ -49,7 +49,7 @@ async fn ensure_oauth_flow_prepared(app_handle: Option<tauri::AppHandle>) -> Res
     #[cfg(target_os = "android")]
     {
         let state_str = uuid::Uuid::new_v4().to_string();
-        let redirect_uri = "urn:ietf:wg:oauth:2.0:oob".to_string();
+        let redirect_uri = "http://localhost".to_string();
         let auth_url = crate::modules::oauth::get_auth_url(&redirect_uri, &state_str);
         let (code_tx, code_rx) = mpsc::channel::<Result<String, String>>(1);
         let (cancel_tx, _) = watch::channel(false);
