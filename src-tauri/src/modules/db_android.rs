@@ -13,7 +13,7 @@ static DB: Lazy<Mutex<Connection>> = Lazy::new(|| {
 });
 
 fn db_path() -> PathBuf {
-    PathBuf::from("/data/data/com.lbjlaq.antigravity_tools/files/moscad.db")
+    PathBuf::from("/data/data/com.lbjlaq.antigravity/files/moscad.db")
 }
 
 // ── Схема ─────────────────────────────────────────────────────────────────────
