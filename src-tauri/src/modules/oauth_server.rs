@@ -45,6 +45,27 @@ fn oauth_fail_html() -> &'static str {
 
 async fn ensure_oauth_flow_prepared(app_handle: Option<tauri::AppHandle>) -> Result<String, String> {
 
+    // On Android — use OOB flow (no localhost callback possible)
+    #[cfg(target_os = "android")]
+    {
+        let state_str = uuid::Uuid::new_v4().to_string();
+        let redirect_uri = "urn:ietf:wg:oauth:2.0:oob".to_string();
+        let auth_url = crate::modules::oauth::get_auth_url(&redirect_uri, &state_str);
+        let (code_tx, code_rx) = mpsc::channel::<Result<String, String>>(1);
+        let (cancel_tx, _) = watch::channel(false);
+        let mut lock = get_oauth_flow_state().lock()
+            .map_err(|_| "OAuth state lock error".to_string())?;
+        *lock = Some(OAuthFlowState {
+            auth_url: auth_url.clone(),
+            redirect_uri,
+            state: state_str,
+            cancel_tx,
+            code_tx,
+            code_rx: Some(code_rx),
+        });
+        return Ok(auth_url);
+    }
+
     // Return URL if flow already exists and is still "fresh" (receiver hasn't been taken)
     if let Ok(mut state) = get_oauth_flow_state().lock() {
         if let Some(s) = state.as_mut() {
