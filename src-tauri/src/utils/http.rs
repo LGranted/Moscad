@@ -22,6 +22,7 @@ fn create_base_client(timeout_secs: u64) -> Client {
         .pool_max_idle_per_host(8)
         .pool_idle_timeout(Duration::from_secs(90))
         .tcp_keepalive(Duration::from_secs(60))
+        .local_address(Some(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)))
         .user_agent(
             crate::utils::fingerprint::FingerprintConfig::current()
                 .user_agent
