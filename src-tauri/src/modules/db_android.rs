@@ -13,13 +13,11 @@ static DB: Lazy<Mutex<Connection>> = Lazy::new(|| {
 });
 
 fn db_path() -> PathBuf {
-    {
-        let path = PathBuf::from("/data/data/com.lbjlaq.antigravity/files/moscad.db");
-        if let Some(parent) = path.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
-        path
+    let path = PathBuf::from("/data/data/com.lbjlaq.antigravity/files/moscad.db");
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
     }
+    path
 }
 
 // ── Схема ─────────────────────────────────────────────────────────────────────
