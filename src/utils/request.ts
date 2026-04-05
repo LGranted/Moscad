@@ -78,3 +78,6 @@ export const cloudflaredInstall = () => invoke<void>('cloudflared_install');
 export const cloudflaredStart = () => invoke<void>('cloudflared_start');
 export const cloudflaredStop = () => invoke<void>('cloudflared_stop');
 export const cloudflaredGetStatus = () => invoke<Record<string, unknown>>('cloudflared_get_status');
+
+// Alias for compatibility
+export const setCurrentAccount = switchAccount;
