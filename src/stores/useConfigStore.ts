@@ -56,6 +56,7 @@ function applyTheme(theme: AppConfig['theme']) {
   } else if (theme === 'light') {
     root.classList.remove('dark');
   } else {
+    // system
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     root.classList.toggle('dark', prefersDark);
   }
