@@ -665,7 +665,7 @@ pub async fn handle_messages(
             // Borrowed from Practical-Guide-to-Context-Engineering
             // Advantage: Completely cache-friendly (only removes messages, doesn't modify content)
             if usage_ratio > threshold_l1 && !compression_applied {
-                if ContextManager::trim_tool_messages(&mut request_with_mapped.messages, 5) {
+                if ContextManager::trim_tool_messages(&mut request_with_mapped.messages, 20) {
                     info!(
                         "[{}] [Layer-1] Tool trimming triggered (usage: {:.1}%, threshold: {:.1}%)",
                         trace_id, usage_ratio * 100.0, threshold_l1 * 100.0
@@ -695,69 +695,69 @@ pub async fn handle_messages(
                 }
             }
 
-            // ===== Layer 2: Thinking Content Compression (L2 threshold) =====
-            // NEW: Preserve signatures while compressing thinking text
-            // This prevents signature chain breakage (Issue #902)
-            if usage_ratio > threshold_l2 && !compression_applied {
-                info!(
-                    "[{}] [Layer-2] Thinking compression triggered (usage: {:.1}%, threshold: {:.1}%)",
-                    trace_id, usage_ratio * 100.0, threshold_l2 * 100.0
-                );
-                
-                // Use new signature-preserving compression
-                if ContextManager::compress_thinking_preserve_signature(
-                    &mut request_with_mapped.messages, 
-                    4 // Protect last 4 messages (~2 turns)
-                ) {
-                    is_purified = true; // Still breaks cache, but preserves signatures
-                    compression_applied = true;
-                    
-                    let new_raw = ContextManager::estimate_token_usage(&request_with_mapped);
-                    let new_usage = calibrator.calibrate(new_raw);
-                    let new_ratio = new_usage as f32 / context_limit as f32;
-                    
-                    info!(
-                        "[{}] [Layer-2] Compression result: {:.1}% → {:.1}% (saved {} tokens)",
-                        trace_id, usage_ratio * 100.0, new_ratio * 100.0, estimated_usage - new_usage
-                    );
-                    
-                    usage_ratio = new_ratio;
-                }
-            }
-
-            // ===== Layer 3: Fork Conversation + XML Summary (L3 threshold) =====
-            // Ultimate optimization: Generate structured summary and start fresh conversation
-            // Advantage: Completely cache-friendly (append-only), extreme compression ratio
-            if usage_ratio > threshold_l3 && !compression_applied {
-                info!(
-                    "[{}] [Layer-3] Context pressure ({:.1}%) exceeded threshold ({:.1}%), attempting Fork+Summary",
-                    trace_id, usage_ratio * 100.0, threshold_l3 * 100.0
-                );
-                
-                // Clone token_manager Arc to avoid borrow issues
-                let token_manager_clone = token_manager.clone();
-                
-                match try_compress_with_summary(&request_with_mapped, &trace_id, &token_manager_clone).await {
-                    Ok(forked_request) => {
-                        info!(
-                            "[{}] [Layer-3] Fork successful: {} → {} messages",
-                            trace_id,
-                            request_with_mapped.messages.len(),
-                            forked_request.messages.len()
-                        );
-                        
-                        request_with_mapped = forked_request;
-                        is_purified = false; // Fork doesn't break cache!
-                        
-                        // Re-estimate after fork (with calibration)
-                        let new_raw = ContextManager::estimate_token_usage(&request_with_mapped);
-                        let new_usage = calibrator.calibrate(new_raw);
-                        let new_ratio = new_usage as f32 / context_limit as f32;
-                        
-                        info!(
-                            "[{}] [Layer-3] Compression result: {:.1}% → {:.1}% (saved {} tokens)",
-                            trace_id, usage_ratio * 100.0, new_ratio * 100.0, estimated_usage - new_usage
-                        );
+//            // ===== Layer 2: Thinking Content Compression (L2 threshold) =====
+//            // NEW: Preserve signatures while compressing thinking text
+//            // This prevents signature chain breakage (Issue #902)
+//            if usage_ratio > threshold_l2 && !compression_applied {
+//                info!(
+//                    "[{}] [Layer-2] Thinking compression triggered (usage: {:.1}%, threshold: {:.1}%)",
+//                    trace_id, usage_ratio * 100.0, threshold_l2 * 100.0
+//                );
+//                
+//                // Use new signature-preserving compression
+//                if ContextManager::compress_thinking_preserve_signature(
+//                    &mut request_with_mapped.messages, 
+//                    4 // Protect last 4 messages (~2 turns)
+//                ) {
+//                    is_purified = true; // Still breaks cache, but preserves signatures
+//                    compression_applied = true;
+//                    
+//                    let new_raw = ContextManager::estimate_token_usage(&request_with_mapped);
+//                    let new_usage = calibrator.calibrate(new_raw);
+//                    let new_ratio = new_usage as f32 / context_limit as f32;
+//                    
+//                    info!(
+//                        "[{}] [Layer-2] Compression result: {:.1}% → {:.1}% (saved {} tokens)",
+//                        trace_id, usage_ratio * 100.0, new_ratio * 100.0, estimated_usage - new_usage
+//                    );
+//                    
+//                    usage_ratio = new_ratio;
+//                }
+//            }
+//
+//            // ===== Layer 3: Fork Conversation + XML Summary (L3 threshold) =====
+//            // Ultimate optimization: Generate structured summary and start fresh conversation
+//            // Advantage: Completely cache-friendly (append-only), extreme compression ratio
+//            if usage_ratio > threshold_l3 && !compression_applied {
+//                info!(
+//                    "[{}] [Layer-3] Context pressure ({:.1}%) exceeded threshold ({:.1}%), attempting Fork+Summary",
+//                    trace_id, usage_ratio * 100.0, threshold_l3 * 100.0
+//                );
+//                
+//                // Clone token_manager Arc to avoid borrow issues
+//                let token_manager_clone = token_manager.clone();
+//                
+//                match try_compress_with_summary(&request_with_mapped, &trace_id, &token_manager_clone).await {
+//                    Ok(forked_request) => {
+//                        info!(
+//                            "[{}] [Layer-3] Fork successful: {} → {} messages",
+//                            trace_id,
+//                            request_with_mapped.messages.len(),
+//                            forked_request.messages.len()
+//                        );
+//                        
+//                        request_with_mapped = forked_request;
+//                        is_purified = false; // Fork doesn't break cache!
+//                        
+//                        // Re-estimate after fork (with calibration)
+//                        let new_raw = ContextManager::estimate_token_usage(&request_with_mapped);
+//                        let new_usage = calibrator.calibrate(new_raw);
+//                        let new_ratio = new_usage as f32 / context_limit as f32;
+//                        
+//                        info!(
+//                            "[{}] [Layer-3] Compression result: {:.1}% → {:.1}% (saved {} tokens)",
+//                            trace_id, usage_ratio * 100.0, new_ratio * 100.0, estimated_usage - new_usage
+//                        );
                     }
                     Err(e) => {
                         error!(
@@ -1775,7 +1775,7 @@ async fn call_gemini_sync(
     
     debug!("[{}] Calling Gemini API: {}", trace_id, model);
     
-    let response = reqwest::Client::new()
+    let response = crate::utils::http::get_client()
         .post(&upstream_url)
         .header("Authorization", format!("Bearer {}", access_token))
         .header("Content-Type", "application/json")

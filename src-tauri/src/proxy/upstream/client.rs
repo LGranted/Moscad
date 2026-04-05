@@ -100,7 +100,7 @@ impl UpstreamClient {
                             error = %err_without_proxy,
                             "Failed to create HTTP client without proxy; using bare client"
                         );
-                        Client::new()
+                        crate::utils::http::get_client()
                     }
                 }
             }

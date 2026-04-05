@@ -589,7 +589,7 @@ pub async fn fetch_zai_models(
     let url = join_base_url(&zai.base_url, "/v1/models");
 
     let mut builder =
-        reqwest::Client::builder().timeout(Duration::from_secs(request_timeout.max(5)));
+        crate::utils::http::get_client().timeout(Duration::from_secs(request_timeout.max(5)));
     if upstream_proxy.enabled && !upstream_proxy.url.is_empty() {
         let proxy = reqwest::Proxy::all(&upstream_proxy.url)
             .map_err(|e| format!("Invalid upstream proxy url: {}", e))?;

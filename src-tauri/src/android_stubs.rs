@@ -36,7 +36,7 @@ pub fn build_stealth_client() -> reqwest::Client {
             headers
         })
         .build()
-        .unwrap_or_else(|_| reqwest::Client::new())
+        .unwrap_or_else(|_| crate::utils::http::get_client())
 }
 
 #[command]
@@ -249,7 +249,7 @@ pub async fn clear_ip_access_logs() -> CommandResult<()> {
 // ── Proxy health ──────────────────────────────────────────────────────────────
 #[command]
 pub async fn check_proxy_health() -> CommandResult<Value> {
-    let client = reqwest::Client::new();
+    let client = crate::utils::http::get_client();
     match client.get("https://www.google.com/generate_204").send().await {
         Ok(resp) => Ok(json!({
             "status": "ok",

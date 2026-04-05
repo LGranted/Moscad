@@ -7,6 +7,57 @@ use crate::modules::config::load_app_config;
 use once_cell::sync::Lazy;
 use reqwest::Client;
 use std::time::Duration;
+// DoH resolver for Android using hickory-resolver
+#[cfg(target_os = "android")]
+mod doh_resolver {
+    use hickory_resolver::{
+        config::{ResolverConfig, ResolverOpts},
+        name_server::TokioConnectionProvider,
+        TokioResolver,
+    };
+    use reqwest::dns::{Resolve, Resolving};
+    use std::future::Future;
+    use std::net::SocketAddr;
+    use std::pin::Pin;
+    use std::sync::Arc;
+
+    #[derive(Clone)]
+    pub struct DoHResolver {
+        resolver: TokioResolver,
+    }
+
+    impl DoHResolver {
+        pub fn new() -> Self {
+            let resolver = TokioResolver::builder_with_config(
+                ResolverConfig::cloudflare(),
+                TokioConnectionProvider::default(),
+            )
+            .with_options(ResolverOpts::default())
+            .build();
+            Self { resolver }
+        }
+    }
+
+    impl Resolve for DoHResolver {
+        fn resolve(&self, name: reqwest::dns::Name) -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<SocketAddr>>> + Send + '_>> {
+            let resolver = self.resolver.clone();
+            let name_str = name.as_str().to_string();
+            Box::pin(async move {
+                let response = resolver.lookup_ip(&name_str).await
+                    .map_err(|e| anyhow::anyhow!("DoH lookup failed for {}: {}", name_str, e))?;
+                let addrs: Vec<SocketAddr> = response.iter()
+                    .map(|ip| SocketAddr::new(ip, 0))
+                    .collect();
+                if addrs.is_empty() {
+                    Err(anyhow::anyhow!("No IP resolved for {}", name_str))
+                } else {
+                    Ok(addrs)
+                }
+            })
+        }
+    }
+}
+
 
 // ── Глобальные shared reqwest клиенты ────────────────────────────────────────
 
@@ -23,23 +74,28 @@ fn create_base_client(timeout_secs: u64) -> Client {
         .pool_idle_timeout(Duration::from_secs(90))
         .tcp_keepalive(Duration::from_secs(60))
         .local_address(Some(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)))
-        .user_agent(
-            crate::utils::fingerprint::FingerprintConfig::current()
-                .user_agent
-                .clone(),
-        );
-
+        .user_agent(crate::utils::fingerprint::FingerprintConfig::current().user_agent.clone());
+    #[cfg(target_os = "android")]
+    let builder = builder.dns_resolver(doh_resolver::DoHResolver::new());
     #[cfg(not(target_os = "android"))]
-    if let Ok(config) = load_app_config() {
-        let proxy_cfg = config.proxy.upstream_proxy;
-        if proxy_cfg.enabled && !proxy_cfg.url.is_empty() {
-            match Proxy::all(&proxy_cfg.url) {
-                Ok(proxy) => { builder = builder.proxy(proxy); }
-                Err(e) => { tracing::error!("Invalid proxy URL '{}': {}", proxy_cfg.url, e); }
+    let builder = {
+        if let Ok(config) = crate::modules::config::load_app_config() {
+            let proxy_cfg = config.proxy.upstream_proxy;
+            if proxy_cfg.enabled && !proxy_cfg.url.is_empty() {
+                match reqwest::Proxy::all(&proxy_cfg.url) {
+                    Ok(proxy) => builder.proxy(proxy),
+                    Err(e) => {
+                        tracing::error!("Invalid proxy URL '{}': {}", proxy_cfg.url, e);
+                        builder
+                    }
+                }
+            } else {
+                builder
             }
+        } else {
+            builder
         }
-    }
-
+    };
     builder.build().unwrap_or_else(|_| Client::new())
 }
 

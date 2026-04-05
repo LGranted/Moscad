@@ -77,7 +77,7 @@ impl ProxyPoolManager {
     /// 2. 如果无绑定，且开启了“自动全局”，取池中第一个节点
     /// 3. 如果以上均无，则检查全局上游代理 (Upstream Proxy) [由调用方 fallback]
     pub async fn get_effective_client(&self, account_id: Option<&str>, timeout_secs: u64) -> Client {
-        let mut builder = Client::builder()
+        let mut builder = crate::utils::http::get_client()
             .emulation(Emulation::Chrome123)
             .timeout(Duration::from_secs(timeout_secs));
         
@@ -125,7 +125,7 @@ impl ProxyPoolManager {
 
     /// [NEW] 为指定账号获取“最终生效”的无特征 Standard HttpClient (专门用于纯净场景，如 OAuth 退还)
     pub async fn get_effective_standard_client(&self, account_id: Option<&str>, timeout_secs: u64) -> Client {
-        let mut builder = Client::builder()
+        let mut builder = crate::utils::http::get_client()
             // 无 Emulation 设置，走纯正的基础 TLS 指纹
             .timeout(Duration::from_secs(timeout_secs));
         
@@ -468,7 +468,7 @@ impl ProxyPoolManager {
         }
         let proxy_cfg = proxy_res.unwrap();
 
-        let client_result = Client::builder()
+        let client_result = crate::utils::http::get_client()
             .proxy(proxy_cfg.proxy)
             .emulation(Emulation::Chrome123)
             .timeout(Duration::from_secs(10))
