@@ -153,7 +153,7 @@ export const Dashboard: React.FC = () => {
   const [quotaLoading, setQuotaLoading] = useState(false);
   const [clearingLimits, setClearingLimits] = useState(false);
   const aggregated = getAggregatedQuotas();
-  const validAccounts = accounts.filter((a) => a.is_valid);
+  const validAccounts = accounts.filter((a) => !a.disabled);
 
   const refresh = useCallback(async () => {
     await Promise.all([fetchAccounts(), fetchStatus(), fetchConfig()]);

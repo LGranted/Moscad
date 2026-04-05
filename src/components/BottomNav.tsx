@@ -53,7 +53,7 @@ export const BottomNav: React.FC = () => {
               key={tab.path}
               onClick={() => navigate(tab.path)}
               className={`
-                flex-1 flex flex-col items-center justify-center py-2 gap-0.5
+                relative flex-1 flex flex-col items-center justify-center py-2 gap-0.5
                 transition-colors duration-150
                 ${active
                   ? 'text-blue-600 dark:text-blue-400'

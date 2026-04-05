@@ -124,7 +124,7 @@ export const Logs: React.FC = () => {
     try {
       const [entries, count] = await Promise.all([
         getLogsFiltered(errorsOnly, search, limit),
-        getLogsCount(),
+        getLogsCount(errorsOnly, search),
       ]);
       setLogs(entries);
       setTotalCount(count);

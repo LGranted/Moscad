@@ -38,7 +38,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
       >
         {/* Avatar */}
         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${
-          account.is_valid ? 'bg-blue-500' : 'bg-gray-400 dark:bg-gray-600'
+          !account.disabled ? 'bg-blue-500' : 'bg-gray-400 dark:bg-gray-600'
         }`}>
           {account.email?.[0]?.toUpperCase() ?? '?'}
         </div>
@@ -49,8 +49,8 @@ const AccountCard: React.FC<AccountCardProps> = ({
             {account.is_current && (
               <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">● Текущий</span>
             )}
-            <span className={`text-xs ${account.is_valid ? 'text-green-500' : 'text-red-500'}`}>
-              {account.is_valid ? 'Активен' : 'Ошибка'}
+            <span className={`text-xs ${!account.disabled ? 'text-green-500' : 'text-red-500'}`}>
+              {!account.disabled ? 'Активен' : 'Отключён'}
             </span>
           </div>
         </div>
@@ -138,7 +138,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
 export const Accounts: React.FC = () => {
   const {
     accounts, quotas, loading,
-    fetchAccounts, deleteAccount, setCurrentAccount, clearRateLimit, fetchQuotaForAll,
+    fetchAccounts, deleteAccount, switchAccount, clearRateLimit, fetchQuotaForAll,
   } = useAccountStore();
   const { config, saveConfig } = useConfigStore();
 
@@ -255,7 +255,7 @@ export const Accounts: React.FC = () => {
               account={acc}
               quota={quotas[acc.id]}
               onDelete={() => deleteAccount(acc.id)}
-              onSetCurrent={() => setCurrentAccount(acc.id)}
+              onSetCurrent={() => switchAccount(acc.id)}
               onClearLimit={() => clearRateLimit(acc.id)}
             />
           ))}
