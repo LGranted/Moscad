@@ -16,10 +16,7 @@ mod doh_resolver {
         TokioResolver,
     };
     use reqwest::dns::{Resolve, Resolving};
-    use std::future::Future;
     use std::net::SocketAddr;
-    use std::pin::Pin;
-    use std::sync::Arc;
 
     #[derive(Clone)]
     pub struct DoHResolver {
@@ -39,20 +36,15 @@ mod doh_resolver {
     }
 
     impl Resolve for DoHResolver {
-        fn resolve(&self, name: reqwest::dns::Name) -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<SocketAddr>>> + Send + '_>> {
+        fn resolve(&self, name: reqwest::dns::Name) -> Resolving {
             let resolver = self.resolver.clone();
             let name_str = name.as_str().to_string();
             Box::pin(async move {
                 let response = resolver.lookup_ip(&name_str).await
-                    .map_err(|e| anyhow::anyhow!("DoH lookup failed for {}: {}", name_str, e))?;
-                let addrs: Vec<SocketAddr> = response.iter()
-                    .map(|ip| SocketAddr::new(ip, 0))
-                    .collect();
-                if addrs.is_empty() {
-                    Err(anyhow::anyhow!("No IP resolved for {}", name_str))
-                } else {
-                    Ok(addrs)
-                }
+                    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
+                let addrs: Box<dyn Iterator<Item = SocketAddr> + Send> =
+                    Box::new(response.iter().map(|ip| SocketAddr::new(ip, 0)));
+                Ok(addrs)
             })
         }
     }
@@ -76,7 +68,7 @@ fn create_base_client(timeout_secs: u64) -> Client {
         .local_address(Some(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)))
         .user_agent(crate::utils::fingerprint::FingerprintConfig::current().user_agent.clone());
     #[cfg(target_os = "android")]
-    let builder = builder.dns_resolver(doh_resolver::DoHResolver::new());
+    let builder = builder.dns_resolver(std::sync::Arc::new(doh_resolver::DoHResolver::new()));
     #[cfg(not(target_os = "android"))]
     let builder = {
         if let Ok(config) = crate::modules::config::load_app_config() {
