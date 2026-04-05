@@ -176,17 +176,20 @@ pub fn run() {
             #[cfg(target_os = "android")]
                 {
                     let handle = app.handle().clone();
-                    let domain = "cloudcode-pa.googleapis.com";
-                    let ip = match crate::utils::doh::resolve_hostname(domain).await {
-                        Ok(ip) => ip,
-                        Err(e) => {
-                            eprintln!("DoH resolve failed for {}: {}, using system DNS", domain, e);
-                            domain.to_string()
+                    tauri::async_runtime::spawn(async move {
+                        let domain = "cloudcode-pa.googleapis.com";
+                        let ip = match crate::utils::doh::resolve_hostname(domain).await {
+                            Ok(ip) => ip,
+                            Err(e) => {
+                                eprintln!("DoH resolve failed for {}: {}, using system DNS", domain, e);
+                                domain.to_string()
+                            }
+                        };
+                        if let Ok(sidecar_cmd) = handle.shell().sidecar("sidecar") {
+                            let args = vec!["--host", domain, "--ip", &ip];
+                            let _ = sidecar_cmd.args(args).spawn().ok();
                         }
-                    };
-                    let Ok(sidecar_cmd) = handle.shell().sidecar("sidecar") else { return Ok(()); };
-                    let args = vec!["--host", domain, "--ip", &ip];
-                    let _ = sidecar_cmd.args(args).spawn().ok();
+                    });
                 }
             Ok(())
         })
