@@ -45,3 +45,5 @@ export const startOAuthFlow = () => invoke<OAuthStartResult>('prepare_oauth_url'
 export const submitOAuthCode = (code: string, state: string | null) =>
   invoke<void>('submit_oauth_code', { code, state });
 export const cancelOAuthFlow = () => invoke<void>('cancel_oauth_login');
+
+export { invoke as request };
