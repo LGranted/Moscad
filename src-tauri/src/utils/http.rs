@@ -42,8 +42,10 @@ mod doh_resolver {
             Box::pin(async move {
                 let response = resolver.lookup_ip(&name_str).await
                     .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
-                let addrs: Box<dyn Iterator<Item = SocketAddr> + Send> =
-                    Box::new(response.iter().map(|ip| SocketAddr::new(ip, 0)));
+                let addrs: Vec<SocketAddr> = response.iter()
+                    .map(|ip| SocketAddr::new(ip, 0))
+                    .collect();
+                let addrs: Box<dyn Iterator<Item = SocketAddr> + Send> = Box::new(addrs.into_iter());
                 Ok(addrs)
             })
         }
