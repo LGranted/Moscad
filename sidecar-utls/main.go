@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
     "bytes"
     "encoding/binary"
     "flag"
@@ -143,7 +144,7 @@ func main() {
     }
 
     tr := &http2.Transport{
-        DialTLS: func(network, addr string, cfg *utls.Config) (net.Conn, error) {
+        DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
             return dialChrome(dialAddr)
         },
     }
