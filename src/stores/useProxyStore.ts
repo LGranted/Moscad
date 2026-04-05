@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import type { ProxyStatus } from '../types';
 import { getProxyStatus, startProxyService, stopProxyService } from '../utils/request';
@@ -6,7 +7,6 @@ interface ProxyState {
   status: ProxyStatus;
   loading: boolean;
   error: string | null;
-
   fetchStatus: () => Promise<void>;
   start: () => Promise<void>;
   stop: () => Promise<void>;
@@ -15,7 +15,7 @@ interface ProxyState {
 const DEFAULT_STATUS: ProxyStatus = {
   is_running: false,
   address: '127.0.0.1',
-  api_key: 'test',
+  api_key: '',
   port: 8080,
 };
 
@@ -29,8 +29,7 @@ export const useProxyStore = create<ProxyState>((set, get) => ({
       const status = await getProxyStatus();
       set({ status, error: null });
     } catch {
-      // Backend may not implement get_proxy_status yet – use defaults
-      set({ status: DEFAULT_STATUS });
+      // keep current status on error, don't reset to default
     }
   },
 
@@ -38,10 +37,14 @@ export const useProxyStore = create<ProxyState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       await startProxyService();
-      await get().fetchStatus();
     } catch (e) {
       set({ error: String(e) });
     } finally {
+      // Always fetch real status after start attempt
+      try {
+        const status = await getProxyStatus();
+        set({ status });
+      } catch {}
       set({ loading: false });
     }
   },
@@ -50,10 +53,17 @@ export const useProxyStore = create<ProxyState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       await stopProxyService();
-      await get().fetchStatus();
     } catch (e) {
       set({ error: String(e) });
     } finally {
+      // Always fetch real status after stop attempt
+      try {
+        const status = await getProxyStatus();
+        set({ status });
+      } catch {
+        // If we can't get status after stop, assume stopped
+        set({ status: { ...DEFAULT_STATUS } });
+      }
       set({ loading: false });
     }
   },

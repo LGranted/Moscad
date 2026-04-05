@@ -1,23 +1,24 @@
+
 import { create } from 'zustand';
 import type { Account, AccountQuota, AggregatedQuota } from '../types';
 import {
   getAccounts,
   deleteAccount as apiDeleteAccount,
-  setCurrentAccount as apiSetCurrentAccount,
+  switchAccount as apiSwitchAccount,
   clearProxyRateLimit as apiClearRateLimit,
   fetchQuota as apiFetchQuota,
+  refreshAllQuotas as apiRefreshAll,
 } from '../utils/request';
 
 interface AccountState {
   accounts: Account[];
-  quotas: Record<string, AccountQuota>; // key = account_id
+  quotas: Record<string, AccountQuota>;
   loading: boolean;
   error: string | null;
 
-  // Actions
   fetchAccounts: () => Promise<void>;
   deleteAccount: (id: string) => Promise<void>;
-  setCurrentAccount: (id: string) => Promise<void>;
+  switchAccount: (id: string) => Promise<void>;
   clearRateLimit: (id: string) => Promise<void>;
   fetchQuotaForAll: () => Promise<void>;
   getAggregatedQuotas: () => AggregatedQuota[];
@@ -43,36 +44,37 @@ export const useAccountStore = create<AccountState>((set, get) => ({
     try {
       await apiDeleteAccount(id);
       await get().fetchAccounts();
-    } catch (e) {
-      set({ error: String(e) });
-    }
+    } catch (e) { set({ error: String(e) }); }
   },
 
-  setCurrentAccount: async (id) => {
+  switchAccount: async (id) => {
     try {
-      await apiSetCurrentAccount(id);
+      await apiSwitchAccount(id);
       await get().fetchAccounts();
-    } catch (e) {
-      set({ error: String(e) });
-    }
+    } catch (e) { set({ error: String(e) }); }
   },
 
   clearRateLimit: async (id) => {
     try {
       await apiClearRateLimit(id);
-    } catch (e) {
-      set({ error: String(e) });
-    }
+    } catch (e) { set({ error: String(e) }); }
   },
 
   fetchQuotaForAll: async () => {
     const { accounts } = get();
+    if (accounts.length === 0) return;
+
+    // Try bulk refresh first
+    try {
+      await apiRefreshAll();
+    } catch {}
+
+    // Then fetch individual quotas
     const results: Record<string, AccountQuota> = {};
     await Promise.allSettled(
       accounts.map(async (acc) => {
         try {
-          const q = await apiFetchQuota(acc.id);
-          results[acc.id] = q;
+          results[acc.id] = await apiFetchQuota(acc.id);
         } catch (e) {
           results[acc.id] = {
             account_id: acc.id,
@@ -89,7 +91,6 @@ export const useAccountStore = create<AccountState>((set, get) => ({
   getAggregatedQuotas: () => {
     const { quotas } = get();
     const map = new Map<string, AggregatedQuota>();
-
     Object.values(quotas).forEach((aq) => {
       if (!aq.quotas) return;
       aq.quotas.forEach((mq) => {
@@ -110,7 +111,6 @@ export const useAccountStore = create<AccountState>((set, get) => ({
         }
       });
     });
-
     return Array.from(map.values()).sort((a, b) => a.model.localeCompare(b.model));
   },
 }));

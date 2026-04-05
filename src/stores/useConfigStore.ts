@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import type { AppConfig } from '../types';
 import { DEFAULT_CONFIG } from '../types';
@@ -7,10 +8,8 @@ interface ConfigState {
   config: AppConfig;
   loading: boolean;
   error: string | null;
-
   fetchConfig: () => Promise<void>;
   saveConfig: (partial: Partial<AppConfig>) => Promise<void>;
-  setTheme: (theme: AppConfig['theme']) => void;
 }
 
 export const useConfigStore = create<ConfigState>((set, get) => ({
@@ -22,8 +21,9 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const config = await loadConfig();
-      set({ config: { ...DEFAULT_CONFIG, ...config }, loading: false });
-      applyTheme(config.theme ?? 'system');
+      const merged = { ...DEFAULT_CONFIG, ...config };
+      set({ config: merged, loading: false });
+      applyTheme(merged.theme ?? 'system');
     } catch {
       set({ loading: false });
       applyTheme('system');
@@ -33,31 +33,39 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   saveConfig: async (partial) => {
     const newConfig = { ...get().config, ...partial };
     set({ config: newConfig });
+    if (partial.theme !== undefined) {
+      applyTheme(partial.theme);
+    }
     try {
       await apiSave(newConfig);
-      if (partial.theme !== undefined) applyTheme(partial.theme);
     } catch (e) {
       set({ error: String(e) });
     }
-  },
-
-  setTheme: (theme) => {
-    const newConfig = { ...get().config, theme };
-    set({ config: newConfig });
-    applyTheme(theme);
-    apiSave(newConfig).catch(() => {});
   },
 }));
 
 function applyTheme(theme: AppConfig['theme']) {
   const root = document.documentElement;
+
+  const apply = (dark: boolean) => {
+    // Tailwind dark mode
+    root.classList.toggle('dark', dark);
+    // DaisyUI theme
+    root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    // Background color for instant feedback
+    root.style.backgroundColor = dark ? '#111827' : '#f9fafb';
+  };
+
   if (theme === 'dark') {
-    root.classList.add('dark');
+    apply(true);
   } else if (theme === 'light') {
-    root.classList.remove('dark');
+    apply(false);
   } else {
     // system
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.classList.toggle('dark', prefersDark);
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    apply(mq.matches);
+    // Remove old listener if any, add new one
+    const handler = (e: MediaQueryListEvent) => apply(e.matches);
+    mq.addEventListener('change', handler);
   }
 }
