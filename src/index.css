@@ -1,16 +1,50 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    --accent: #16a34a;
+    --accent-light: #dcfce7;
+  }
+  .dark {
+    --accent: #2dd4bf;
+    --accent-light: #0f2a2a;
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: hidden;
+  }
+  body {
+    overscroll-behavior: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  input, textarea, [contenteditable] {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
 @layer utilities {
-  /* Safe area insets для Android (notch, navigation bar) */
-  .pt-safe {
-    padding-top: env(safe-area-inset-top);
-  }
-  .pb-safe {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  .safe-area-pb {
-    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
-  }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-area-pb { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
+  .accent-bg { background-color: var(--accent); }
+  .accent-text { color: var(--accent); }
+  .accent-border { border-color: var(--accent); }
+  .accent-light-bg { background-color: var(--accent-light); }
+  .animate-spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .animate-pulse { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
 }
