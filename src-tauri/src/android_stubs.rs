@@ -1,10 +1,15 @@
 use log::info;
+use std::sync::atomic::{AtomicBool, Ordering};
+use once_cell::sync::Lazy;
 use serde_json::{json, Value};
 use tauri::command;
 use std::ffi::CStr;
 use libc::c_char;
 
 use crate::modules::db_android;
+// ── Глобальное состояние прокси ───────────────────────────────────────────────
+static PROXY_RUNNING: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
+
 
 pub type CommandResult<T> = Result<T, String>;
 
@@ -61,9 +66,33 @@ pub fn start_proxy_foreground_service() -> CommandResult<()> {
     Ok(())
 }
 
-#[command] pub fn start_proxy_service() -> CommandResult<()> { info!("Virtual Android Proxy Started"); Ok(()) }
-#[command] pub fn stop_proxy_service()  -> CommandResult<()> { info!("Virtual Android Proxy Stopped"); Ok(()) }
-#[command] pub fn get_proxy_status()    -> CommandResult<Value> { Ok(json!({"is_running": true, "port": 0})) }
+#[command]
+pub fn start_proxy_service() -> CommandResult<()> {
+    PROXY_RUNNING.store(true, Ordering::SeqCst);
+    info!("Android Proxy Started");
+    Ok(())
+}
+
+#[command]
+pub fn stop_proxy_service() -> CommandResult<()> {
+    PROXY_RUNNING.store(false, Ordering::SeqCst);
+    info!("Android Proxy Stopped");
+    Ok(())
+}
+
+#[command]
+pub fn get_proxy_status() -> CommandResult<Value> {
+    let is_running = PROXY_RUNNING.load(Ordering::SeqCst);
+    let config = crate::modules::config::load_app_config().ok();
+    let port = config.as_ref().and_then(|c| c.proxy.as_ref().map(|p| p.port)).unwrap_or(8080);
+    let api_key = config.as_ref().and_then(|c| c.proxy.as_ref().and_then(|p| p.api_key.clone())).unwrap_or_default();
+    Ok(json!({
+        "is_running": is_running,
+        "port": port,
+        "address": "127.0.0.1",
+        "api_key": api_key
+    }))
+}
 
 #[command] pub fn bind_device_profile() -> CommandResult<()> { Ok(()) }
 #[command] pub fn bind_device_profile_with_profile(_p: String) -> CommandResult<()> { Ok(()) }

@@ -13,7 +13,7 @@ interface ProxyState {
 }
 
 const DEFAULT_STATUS: ProxyStatus = {
-  is_running: false,
+  is_running: false, // will be overwritten by fetchStatus
   address: '127.0.0.1',
   api_key: '',
   port: 8080,
